@@ -1,0 +1,52 @@
+name: sensei
+display_name: Agix Sensei
+description: Strategic mentor — synthesizes the Goal Tree, observes yesterday's commits + agent runs, and re-grounds the operator when execution drifts from the North Star. 5 modes (brief, chat, plan, session, goals).
+
+# Distribution tier (Phase B). basic = free public pack · pro = paid · enterprise = private.
+tier: basic
+
+runtime:
+  language: nodejs
+  node_version: '>=20'
+  memory_mb: 512
+  timeout_sec: 600
+
+# Sensei doesn't touch Workspace APIs — its only Google surface is the
+# SMTP send for the daily briefing email (when invoked as `brief --send`),
+# which goes through lib/agix-send.mjs (Workspace app-password flow).
+auth: null
+
+# Every day 08:00 local for the daily briefing. The operator wants a
+# strategic compass on weekends too, not just weekdays. Mirror of
+# launchd/io.agix.sensei.plist.
+schedule:
+  - cron: '0 8 * * *'
+timezone: '${tenant.timezone}'
+
+outputs:
+  - kind: file
+    path: wiki/sensei-journal/{{yearmonth}}.md
+    mode: append
+  - kind: email
+    template: briefing
+    to: '${tenant.operator_email}'
+    optional: true               # only when invoked as `brief --send`
+  - kind: state
+    name: chats
+    schema: 'jsonl files under ~/.cache/agix-sensei/chats/'
+  - kind: state
+    name: sessions
+    schema: 'json files under ~/.cache/agix-sensei/sessions/'
+
+config:
+  - ANTHROPIC_API_KEY: required
+
+defaults:
+  summarize_model: claude-haiku-4-5    # Goal Tree synthesis
+  strategic_model: claude-opus-4-7     # briefing + chat + plan strategic reasoning
+  default_instance: agix
+  # The whitelist of agents Sensei is allowed to fire from inside chat/plan
+  # modes via the /fire command. Anything not in this list is denied.
+  fire_allowlist:
+    - research
+    - secretary

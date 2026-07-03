@@ -1,0 +1,24 @@
+agent: context-warden
+trust_level: proposer
+
+filesystem:
+  read:  ["agents/context-warden/", "wiki/", "architecture/"]
+  write: ["wiki/context-warden/"]
+  deny:  ["backend/", "frontend/", "agents/*/agent.mjs", ".github/"]
+
+tools:
+  allow: [Read, Grep, Glob, Write]   # Write restricted to wiki/context-warden/ by filesystem.write
+
+# Proposer by default — it must not act on source or release. The opt-in autonomous mode
+# (manifest defaults.autonomous=true) only ever drives the platform's context actuators
+# (compaction/context-edit/memory) on the WATCHED session, never edits source or ships.
+bash:
+  deny_patterns:
+    - "git push"
+    - "git commit"
+    - "gh release"
+    - "gh pr merge"
+
+inference:
+  can_delegate_to: []
+  max_tool_calls: 100

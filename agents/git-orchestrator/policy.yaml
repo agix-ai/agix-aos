@@ -1,0 +1,40 @@
+# git-orchestrator — advisory policy (AGA.Soul.1 Layer 2).
+# Companion to the soul: block in manifest.yaml. Declares the capabilities +
+# boundaries this agent SHOULD honor. v0.2 does NOT sandbox-enforce this at
+# runtime; runtime enforcement is on the roadmap (see SECURITY.md). This is
+# documented intent, not a runtime guarantee. The agent's own no-auto-merge /
+# no-force-push logic lives in agent.mjs.
+agent: git-orchestrator
+trust_level: executor
+
+filesystem:
+  # Reads the repo to do the git ceremony; reads its own pattern memory + cursor.
+  read:
+    - 'agents/git-orchestrator/'
+    - 'wiki/'
+    - 'architecture/'
+  # Executor trust — writes source/branches + its own proposal space. Still
+  # denies the CI/deploy surface by convention.
+  write:
+    - 'wiki/git-orchestrator/'
+  deny:
+    - '.github/workflows/'
+
+tools:
+  allow: [Read, Grep, Glob, Edit, Write, Bash]
+
+bash:
+  # An executor may commit + push branches, but never force-pushes, never
+  # deploys, never auto-merges without the human gate. ADVISORY in v0.2 —
+  # these declare commands the agent should not run, not a runtime sandbox.
+  deny_patterns:
+    - 'git push.*--force'
+    - 'git push.*-f\b'
+    - 'gcloud run deploy'
+    - 'gcloud builds submit'
+    - 'gh pr merge.*--admin'
+    - 'gcloud secrets versions access'
+
+inference:
+  can_delegate_to: []
+  max_tool_calls: 120

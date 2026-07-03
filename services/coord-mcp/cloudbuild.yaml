@@ -1,0 +1,22 @@
+# agix-coord-mcp image build (optional hosted path).
+# The BUILD CONTEXT is services/ (one level up), because the module consumes
+# services/go-common via a relative replace:
+#
+#   gcloud builds submit services \
+#     --config services/coord-mcp/cloudbuild.yaml \
+#     --substitutions "_IMAGE_URI=<uri>,_VERSION=<git-sha>"
+steps:
+  - name: gcr.io/cloud-builders/docker
+    args:
+      - build
+      - -f
+      - coord-mcp/Dockerfile
+      - --build-arg
+      - VERSION=${_VERSION}
+      - -t
+      - ${_IMAGE_URI}
+      - .
+images:
+  - ${_IMAGE_URI}
+substitutions:
+  _VERSION: dev

@@ -1,0 +1,17 @@
+{
+  "correctness": {
+    "determinismStable": 1,
+    "safetyViolations": 0,
+    "gateSelfTestPassed": 1,
+    "tierSafetyViolations": 0,
+    "efficiencyDeltaPositive": 1,
+    "qualityRegressed": 0,
+    "negativeControlsCaught": 4
+  },
+  "performance": {
+    "costOfPassLearned": 0.002441,
+    "efficiencyDeltaPct": 0.656526,
+    "repeatabilitySpread": 0.443776,
+    "meanLatencyLearned": 1448.517952
+  }
+}

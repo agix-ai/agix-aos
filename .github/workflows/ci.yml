@@ -1,0 +1,97 @@
+name: CI
+
+on:
+  # PRs validate every feature branch (via pull_request). push is scoped to
+  # main only (post-merge / direct-to-main coverage) so feature-branch pushes
+  # are not billed twice (push + the PR's pull_request run). Cuts ~half the CI
+  # runs. ci-warden cost finding, 2026-06-18.
+  pull_request:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+# Cancel superseded runs on the same ref to keep CI lean.
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  website:
+    name: Website (lint, typecheck, build, apphosting gate)
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 10.8.1
+          run_install: false
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: pnpm
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      # Pre-deploy validation gate (Track A · A1).
+      # Fast-fail if `next` is on a version Firebase App Hosting will reject
+      # (CVE-2025-66478). Catches the class of failure that took down the
+      # second production rollout.
+      - name: Pre-deploy CVE check (Next.js version)
+        run: pnpm --filter @agix/website apphosting:check-nextjs
+
+      - name: Lint
+        run: pnpm lint
+
+      - name: Typecheck
+        run: pnpm typecheck
+
+      # Pre-deploy validation gate (Track A · A1).
+      # Runs `@apphosting/adapter-nextjs` end-to-end exactly as Firebase App
+      # Hosting will run it server-side, including standalone output. The
+      # adapter spawns the workspace build internally with
+      # `NEXT_PRIVATE_STANDALONE=true`, so this step *is* the build for CI.
+      # Do NOT add a separate `pnpm build` step before this one: the plain
+      # build does not set the standalone env var, Turbo caches its
+      # non-standalone `.next/` output, and the adapter's spawned build
+      # then replays from cache and never produces the `.next/standalone/`
+      # directory the adapter expects. If this step is green, App Hosting
+      # rollout will not fail at the adapter stage.
+      - name: Build (App Hosting adapter)
+        run: pnpm --filter @agix/website apphosting:build
+
+  api-python:
+    name: API Python (lint, test)
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    defaults:
+      run:
+        working-directory: services/api-python
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: pip
+          cache-dependency-path: services/api-python/requirements.txt
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+          pip install ruff pytest httpx
+
+      - name: Lint (ruff)
+        run: ruff check app
+
+      - name: Smoke import
+        run: python -c "from app.main import app; print(app.title)"

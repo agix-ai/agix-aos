@@ -1,0 +1,48 @@
+# Node
+node_modules/
+.pnpm-store/
+dist/
+build/
+.turbo/
+.next/
+*.tsbuildinfo
+
+# Python
+__pycache__/
+*.pyc
+.venv/
+venv/
+
+# Environment and local settings
+.env
+.env.*
+!.env.example
+
+# Logs and caches
+*.log
+.DS_Store
+.idea/
+.vscode/
+
+# Cloned client repositories (evaluation only — never commit client source)
+/.client-repos/
+.gstack/
+
+# Claude Code harness — subagent worktrees, local settings
+.claude/
+
+# Firebase App Hosting adapter bundle output
+/.apphosting/
+
+# Agix runtime artifacts auto-provisioned into a dev checkout
+# (output root = repo root when run from a .git tree)
+/gbrain/
+/wiki/notes/
+/wiki/README.md
+
+# Cloud-agent contributor keys — plaintext lives in ~/.config/agix/, never in-repo
+contributor-keys/
+*contributor-key*.env
+
+# Release artifacts (binaries / SBOMs / signatures) — never committed
+dist/

@@ -1,0 +1,1147 @@
+#!/usr/bin/env node
+// agix — user-facing CLI for Agix agents.
+//
+// Phase 1: local-only. `agix agent run <name>` is the canonical entry
+// point for every scheduled agent. LaunchAgent plists call this binary,
+// not the underlying agent.mjs.
+
+import { resolve as resolvePath, dirname } from 'node:path';
+import { fileURLToPath } from 'node:url';
+import { createInterface } from 'node:readline';
+import { listAgents, runAgent, loadAgentManifest, newAgentTargetDir, isDevCheckout, LocalRuntime } from '../lib/agix-runtime.mjs';
+import { renderLedgerShow, renderLedgerStats, renderDora } from '../lib/agix-ledger-cli.mjs';
+import { runSdlc, defaultActors, agentActors, renderSdlcPlan } from '../lib/agix-sdlc.mjs';
+import { scaffoldAgent, VALID_TRUST_LEVELS, DEFAULT_TRUST_LEVEL } from '../lib/agix-agent-template.mjs';
+import { interactive, runSlash } from '../lib/agix-slash.mjs';
+import { isOnboarded, runOnboarding, autoProvision } from '../lib/agix-onboard.mjs';
+import { readSoul, appendLearning, soulPath } from '../lib/agix-soul.mjs';
+import { runAllEvals, runAgentEvals, coverageReport } from '../lib/agix-eval.mjs';
+import { ensureDaemon, fanout, DEFAULT_SOCK } from '../lib/agix-fanout.mjs';
+import { createBus } from '../lib/agix-bus.mjs';
+import { wardenStep } from '../lib/agix-warm-context.mjs';
+import {
+  discoverAgents,
+  installAgent,
+  installAll,
+  uninstallAgent,
+  uninstallAll,
+  doctor,
+} from '../lib/agix-fleet.mjs';
+import {
+  busUpCommand,
+  busDownCommand,
+  busStatusCommand,
+  DEFAULT_SOCKET,
+} from '../lib/agix-bus-cli.mjs';
+
+const argv = process.argv.slice(2);
+
+try {
+  await dispatch(argv);
+} catch (err) {
+  // Set exitCode FIRST so the non-zero status survives even if a later
+  // async stdout/stderr flush races (e.g. the consumer is `| head` and
+  // closes the pipe early → EPIPE → the write callback could otherwise
+  // clobber the exit). Write synchronously to fd 2 so the message is not
+  // buffered behind a pipe that may already be closing. (audit N5/S3:
+  // `agix agent run <unknown>` must exit non-zero so scripts/CI catch it.)
+  process.exitCode = 1;
+  try {
+    process.stderr.write('agix: ' + (err && err.message ? err.message : String(err)) + '\n');
+    if (process.env.DEBUG && err && err.stack) process.stderr.write(err.stack + '\n');
+  } catch { /* stderr already gone (EPIPE) — exitCode is already 1 */ }
+  process.exit(1);
+}
+
+async function dispatch(args) {
+  const [cmd, sub, ...rest] = args;
+
+  if (cmd === '-h' || cmd === '--help' || cmd === 'help') {
+    printUsage();
+    return;
+  }
+
+  // ─── first-run onboarding (AGIX.ONBOARD.1 Phase D) ───────────────────
+  //
+  // `agix init` runs onboarding explicitly. Everything else first checks the
+  // auto-trigger (D.1 / DL.4): a never-onboarded machine gets set up before its
+  // command runs — interactively when a human is at the terminal (TTY), silently
+  // (zero-prompt auto-provision only) when scripted. `init`, help, and version are
+  // exempt so they can't recurse / block.
+  if (cmd === 'init') {
+    return cmdInit(args.slice(1));
+  }
+  // `uninstall` must NOT auto-provision state right before purging it; exempt it
+  // alongside version (like init above).
+  if (cmd === 'uninstall') {
+    return cmdUninstallAgix(args.slice(1));
+  }
+  if (cmd !== 'version' && cmd !== '--version' && cmd !== '-v') {
+    await maybeAutoOnboard();
+  }
+
+  if (!cmd) {
+    return interactive();              // no args → interactive mentor + slash mode
+  }
+
+  if (cmd.startsWith('/')) {
+    return runSlash(args);             // one-shot slash command (scriptable / Claude-Code friendly)
+  }
+
+  if (cmd === 'config' || cmd === 'settings') {
+    return runSlash(['/settings', ...args.slice(1)]);
+  }
+
+  if (cmd === 'agent') {
+    return dispatchAgent(sub, rest);
+  }
+
+  if (cmd === 'soul') {
+    return dispatchSoul(sub, rest);
+  }
+
+  if (cmd === 'ledger') {
+    return dispatchLedger(sub, rest);
+  }
+
+  if (cmd === 'dora') {
+    return cmdDora([sub, ...rest].filter((a) => a !== undefined));
+  }
+
+  if (cmd === 'sdlc') {
+    return dispatchSdlc(sub, rest);
+  }
+
+  if (cmd === 'swarm') {
+    return cmdSwarm(args.slice(1));
+  }
+
+  if (cmd === 'bus') {
+    return dispatchBus(sub, rest);
+  }
+
+  if (cmd === 'version' || cmd === '--version' || cmd === '-v') {
+    console.log('agix 0.2.2 (local runtime)');
+    return;
+  }
+
+  console.error(`Unknown command: ${cmd}`);
+  printUsage();
+  process.exit(64);
+}
+
+// ─── onboarding (AGIX.ONBOARD.1 Phase D) ─────────────────────────────
+//
+// `agix init`        → full interactive onboarding (auto-offer is implicit — you asked).
+// `agix init --defaults` → non-interactive: provision everything, placeholders, no prompts
+//                     (CI / scripted / ready-to-go).
+async function cmdInit(rest) {
+  const opts = parseAgentFlags(rest);
+  if (opts.defaults) {
+    await runOnboarding({ interactive: false });
+    return;
+  }
+  await runOnboarding({ interactive: true });
+}
+
+// ─── uninstall (state cleanup helper; audit N1) ──────────────────────
+//
+// `brew uninstall agix-aos` removes the BINARY/formula tree, but leaves your
+// per-user state behind (~/.config/agix, ~/.cache/agix*, ~/.local/state/agix).
+// This helper purges that state. By design it does NOT shell out to brew (the
+// pack may have been installed via npm/tarball, and removing the formula is the
+// package manager's job) — it just cleans the home-dir state Agix created.
+//
+//   agix uninstall                 Show what would be removed + how to finish (dry preview)
+//   agix uninstall --purge-state   Actually remove the per-user state dirs
+//   agix uninstall --yes           Alias for --purge-state (non-interactive)
+async function cmdUninstallAgix(rest) {
+  const { homedir } = await import('node:os');
+  const { rm, stat } = await import('node:fs/promises');
+  const opts = parseAgentFlags(rest);
+  const purge = Boolean(opts.purgeState || opts.yes);
+  const home = homedir();
+  const stateDirs = [
+    resolvePath(home, '.config/agix'),
+    resolvePath(home, '.local/state/agix'),
+    resolvePath(home, '.cache/agix'),
+  ];
+  // ~/.cache/agix-<agent>/ per-agent caches — collect any that exist.
+  try {
+    const { readdir } = await import('node:fs/promises');
+    const cacheRoot = resolvePath(home, '.cache');
+    for (const name of await readdir(cacheRoot)) {
+      if (name === 'agix' || name.startsWith('agix-') || name.startsWith('agix-bus')) {
+        stateDirs.push(resolvePath(cacheRoot, name));
+      }
+    }
+  } catch { /* no ~/.cache — nothing to add */ }
+  const present = [];
+  for (const d of [...new Set(stateDirs)]) {
+    try { await stat(d); present.push(d); } catch { /* absent */ }
+  }
+
+  if (!purge) {
+    console.log('agix uninstall — per-user state cleanup\n');
+    if (present.length === 0) {
+      console.log('No Agix state dirs found under your home directory. Nothing to clean.');
+    } else {
+      console.log('Would remove these per-user state dirs:');
+      for (const d of present) console.log('  ' + d);
+      console.log('\nRun again with --purge-state (or --yes) to actually remove them.');
+    }
+    console.log('\nTo remove the agix binary itself, use your package manager:');
+    console.log('  brew uninstall agix-aos        # if installed via Homebrew');
+    return;
+  }
+
+  if (present.length === 0) {
+    console.log('No Agix state dirs found — nothing to purge.');
+  } else {
+    for (const d of present) {
+      await rm(d, { recursive: true, force: true });
+      console.log('✓ removed ' + d);
+    }
+    console.log('\nPer-user state purged.');
+  }
+  console.log('To remove the agix binary itself: brew uninstall agix-aos (if installed via Homebrew).');
+}
+
+// First-run auto-trigger (D.1 / DL.4). Fires for any non-init command on a machine
+// that has never been onboarded.
+//   - TTY (a human): auto-OFFER ("first run — set you up? [Y/n]"); run on yes,
+//     run silent auto-provision on no/skip (so even a decline leaves it ready-to-go).
+//   - non-TTY (scripted): run autoProvision SILENTLY so scripted use is also
+//     ready-to-go, but skip the interactive bits. Never block, never loop.
+async function maybeAutoOnboard() {
+  if (isOnboarded()) return;
+  if (process.stdin.isTTY) {
+    const yes = await confirmYesNo('Looks like your first run — want me to get you set up? [Y/n] ');
+    if (yes) {
+      await runOnboarding({ interactive: true });
+    } else {
+      // Decline → still auto-provision the zero-prompt substrate so the command works,
+      // but don't write the marker (so we re-offer the full flow next time).
+      const r = autoProvision();
+      console.error(`(skipped onboarding — provisioned the essentials: ${r.created.join(', ') || 'all present'}. Run \`agix init\` anytime.)`);
+    }
+    return;
+  }
+  // Non-TTY first run: provision silently; do NOT mark onboarded (the get-to-know-you
+  // + provider confirmation still want a TTY), and do NOT block.
+  try { autoProvision(); } catch { /* never block a scripted command on provisioning */ }
+}
+
+// Minimal Y/n confirm on the TTY. Default = yes (Enter). Resolves boolean.
+function confirmYesNo(prompt) {
+  return new Promise((res) => {
+    const rl = createInterface({ input: process.stdin, output: process.stdout });
+    rl.question(prompt, (a) => {
+      rl.close();
+      const t = String(a || '').trim().toLowerCase();
+      res(t === '' || t === 'y' || t === 'yes');
+    });
+  });
+}
+
+async function dispatchAgent(sub, rest) {
+  if (!sub || sub === 'help' || sub === '-h' || sub === '--help') {
+    printAgentUsage();
+    return;
+  }
+
+  if (sub === 'list') {
+    const agents = await listAgents();
+    if (agents.length === 0) {
+      console.log('No agents installed under ./agents/.');
+      return;
+    }
+    const width = Math.max(...agents.map(a => a.name.length));
+    for (const a of agents) {
+      const desc = a.manifest?.description || a.manifest?.display_name || '';
+      console.log(`  ${a.name.padEnd(width)}  ${desc}`);
+    }
+    return;
+  }
+
+  if (sub === 'show') {
+    const [name] = rest;
+    if (!name) { console.error('Usage: agix agent show <name>'); process.exit(64); }
+    const manifest = await loadAgentManifest(name);
+    process.stdout.write(JSON.stringify(manifest, null, 2) + '\n');
+    return;
+  }
+
+  if (sub === 'run') {
+    const [name, ...flagArgs] = rest;
+    if (!name) { console.error('Usage: agix agent run <name> [--flag value ...]'); process.exit(64); }
+    const opts = parseAgentFlags(flagArgs);
+    await runAgent(name, opts);
+    return;
+  }
+
+  if (sub === 'new') {
+    return cmdNew(rest);
+  }
+
+  if (sub === 'install') {
+    return cmdInstall(rest);
+  }
+
+  if (sub === 'uninstall') {
+    return cmdUninstall(rest);
+  }
+
+  if (sub === 'smoke') {
+    return cmdSmoke(rest);
+  }
+
+  if (sub === 'doctor') {
+    return cmdDoctor(rest);
+  }
+
+  if (sub === 'eval') {
+    return cmdEval(rest);
+  }
+
+  if (sub === 'serve') {
+    return cmdServe(rest);
+  }
+
+  console.error(`Unknown agent command: ${sub}`);
+  printAgentUsage();
+  process.exit(64);
+}
+
+// ─── soul (AGIX.ONBOARD.1 Phase E.2 — the instance soul GROWS) ────────
+//
+// Onboarding scaffolds soul.md; this surface lets the operator READ it and APPEND
+// dated learnings. The mentor accretes learnings automatically via recordLearning()
+// (lib/agix-soul.mjs); these commands are the human-facing equivalents.
+//
+//   agix soul show              Print the instance soul.md
+//   agix soul note "<learning>" Append a dated learning to the soul
+
+async function dispatchSoul(sub, rest) {
+  if (!sub || sub === 'help' || sub === '-h' || sub === '--help') {
+    printSoulUsage();
+    return;
+  }
+
+  if (sub === 'show') {
+    const text = readSoul();
+    if (!text) {
+      console.error(`No soul yet at ${soulPath()}. Run \`agix init\` to scaffold it.`);
+      process.exit(1);
+    }
+    process.stdout.write(text.endsWith('\n') ? text : text + '\n');
+    return;
+  }
+
+  if (sub === 'note') {
+    // The learning is the remaining args joined (so unquoted multi-word notes work too).
+    const opts = parseAgentFlags(rest);
+    const text = opts._.join(' ').trim();
+    if (!text) { console.error('Usage: agix soul note "<learning>" [--category <tag>]'); process.exit(64); }
+    const category = typeof opts.category === 'string' ? opts.category : null;
+    const r = appendLearning(text, { category });
+    if (r.appended) {
+      console.log(`✓ noted${r.createdSection ? ' (started Learnings section)' : ''}: ${r.bullet}`);
+    } else if (r.deduped) {
+      console.log(`· already recorded (no-op): ${r.bullet}`);
+    } else {
+      console.error('Nothing to note (empty learning).');
+      process.exit(64);
+    }
+    return;
+  }
+
+  console.error(`Unknown soul command: ${sub}`);
+  printSoulUsage();
+  process.exit(64);
+}
+
+function printSoulUsage() {
+  console.log(`agix soul — the instance soul (AGIX.ONBOARD.1 Phase E.2: it GROWS)
+
+  agix soul show                     Print your instance soul.md
+  agix soul note "<learning>"        Append a dated learning to the soul
+       [--category <tag>]
+
+The soul accretes what Agix learns about you over time as dated bullets under
+'## Learnings (accreted)'. The mentor appends to it automatically when it captures
+a durable preference; these commands are the manual equivalents. Append-only — your
+soul only ever grows; existing content is never rewritten.
+`);
+}
+
+// ─── ledger / dora (governance audit-ledger read views) ──────────────
+//
+// READ-ONLY windows onto the per-tenant append-only audit ledger (the L2
+// substrate the governance fleet writes — version-manager / release-manager /
+// gtm-advisor + every gate). Mirrors `agix soul show`: builds the operator's
+// tenant-scoped ledger via runtime.getLedger() and prints; never writes.
+//
+//   agix ledger show [--kind K] [--since ISO] [--scope run=<id>|role=<id>|...]
+//   agix ledger stats                 counts + DORA + gate metrics
+//   agix dora                         the DORA five + gate-rejection/first-pass
+//
+// Works with an empty ledger (prints "no entries yet"). A `--tenant <id>`
+// selects the enterprise (default 'agix', the single-operator install).
+
+// Build a read-only, tenant-scoped ledger for the CLI views. No agentName —
+// the ledger's file path is agent-independent (outputRoot()/governance), so a
+// bare runtime reads exactly what the governance agents wrote.
+function openOperatorLedger(opts) {
+  const tenantId = (typeof opts.tenant === 'string' && opts.tenant) ? opts.tenant : 'agix';
+  const runtime = new LocalRuntime({ tenantId });
+  return { ledger: runtime.getLedger(), enterpriseId: tenantId };
+}
+
+// Parse `--scope run=<id> role=<id> mandate=<id> user=<id>` into the ledger's
+// scope filter shape ({ runId, roleId, mandateId, userId }). Accepts repeated
+// --scope flags or a single space-joined value; unknown keys are ignored.
+function parseScopeFlag(opts) {
+  const raw = [];
+  if (Array.isArray(opts.scope)) raw.push(...opts.scope);
+  else if (typeof opts.scope === 'string') raw.push(opts.scope);
+  // positional leftovers after `show` may carry scope tokens too
+  for (const p of opts._ || []) if (typeof p === 'string' && p.includes('=')) raw.push(p);
+  const map = { run: 'runId', role: 'roleId', mandate: 'mandateId', user: 'userId' };
+  const scope = {};
+  for (const token of raw.join(' ').split(/\s+/).filter(Boolean)) {
+    const eq = token.indexOf('=');
+    if (eq === -1) continue;
+    const key = map[token.slice(0, eq).trim().toLowerCase()];
+    const val = token.slice(eq + 1).trim();
+    if (key && val) scope[key] = val;
+  }
+  return Object.keys(scope).length ? scope : null;
+}
+
+async function dispatchLedger(sub, rest) {
+  if (!sub || sub === 'help' || sub === '-h' || sub === '--help') {
+    printLedgerUsage();
+    return;
+  }
+
+  if (sub === 'show') {
+    const opts = parseAgentFlags(rest);
+    const { ledger, enterpriseId } = openOperatorLedger(opts);
+    const kind = typeof opts.kind === 'string' ? opts.kind : undefined;
+    const since = typeof opts.since === 'string' ? opts.since : undefined;
+    const scope = parseScopeFlag(opts);
+    const entries = await ledger.read({ kind, since, scope });
+    process.stdout.write(renderLedgerShow(entries, { enterpriseId, kind, since, scope }));
+    return;
+  }
+
+  if (sub === 'stats') {
+    const opts = parseAgentFlags(rest);
+    const { ledger, enterpriseId } = openOperatorLedger(opts);
+    const scope = parseScopeFlag(opts);
+    const stats = await ledger.stats(scope ? { scope } : {});
+    process.stdout.write(renderLedgerStats(stats, { enterpriseId }));
+    return;
+  }
+
+  console.error(`Unknown ledger command: ${sub}`);
+  printLedgerUsage();
+  process.exit(64);
+}
+
+// `agix dora` — the DORA + gate metrics over the operator's ledger.
+async function cmdDora(rest) {
+  const opts = parseAgentFlags(rest);
+  const { ledger, enterpriseId } = openOperatorLedger(opts);
+  const scope = parseScopeFlag(opts);
+  const stats = await ledger.stats(scope ? { scope } : {});
+  process.stdout.write(renderDora(stats, { enterpriseId }));
+}
+
+// ─── sdlc (the loop-engineered SDLC phase-runner) ────────────────────
+//
+// `agix sdlc plan <task>` drives the deterministic phase-runner (lib/agix-sdlc.mjs)
+// with the DEFAULT descriptor-driven actors — NO agent invocation, NO API key,
+// no network. It prints the phase-by-phase plan (each gate's verdict + who
+// verifies + the human-escalation points) and writes the trajectory to the
+// operator's governance ledger (visible via `agix ledger show`).
+//
+// `agix sdlc run <task>` takes the real-agent path: it wires runtime.runAgent()
+// for the mapped fleet agent at each phase (onboarding→Orient, architect→Spec/
+// Design, tester→Test, git-orchestrator→Integrate, investigator→Root-cause,
+// release-engineer→Release/Operate) — this INVOKES the fleet for real.
+//
+//   agix sdlc plan <task-id | descriptor.json | '{"id":...}'> [--approve a,b] [--approve-all]
+//   agix sdlc run  <task-id | descriptor.json>               [--approve-all] [--tenant <id>]
+
+async function dispatchSdlc(sub, rest) {
+  if (!sub || sub === 'help' || sub === '-h' || sub === '--help') {
+    printSdlcUsage();
+    return;
+  }
+  if (sub !== 'plan' && sub !== 'run') {
+    console.error(`Unknown sdlc command: ${sub}`);
+    printSdlcUsage();
+    process.exit(64);
+  }
+
+  const opts = parseAgentFlags(rest);
+  const positional = (opts._ || []).find((a) => typeof a === 'string') || null;
+  if (!positional) {
+    console.error(`Usage: agix sdlc ${sub} <task-id | descriptor.json | inline-json>`);
+    process.exit(64);
+  }
+  const descriptor = await loadSdlcDescriptor(positional);
+  const approvals = parseSdlcApprovals(opts, descriptor);
+  const maxAttempts = Number.isFinite(opts.maxAttempts) ? Number(opts.maxAttempts) : 3;
+  const tenantId = (typeof opts.tenant === 'string' && opts.tenant) ? opts.tenant : 'agix';
+
+  const runtime = new LocalRuntime({ tenantId, agentName: 'sdlc-runner' });
+  const ledger = runtime.getLedger();
+
+  if (sub === 'run') {
+    process.stderr.write(
+      `⚠ agix sdlc run — the REAL-agent path. It invokes the fleet via runtime.runAgent() ` +
+      `for each phase (this can consume API tokens and take agent actions). Use \`agix sdlc plan\` ` +
+      `for the deterministic, no-API-key preview.\n`,
+    );
+  }
+  const actors = sub === 'run' ? agentActors(runtime) : defaultActors();
+
+  const result = await runSdlc({
+    task: descriptor,
+    scope: descriptor.scope || {},
+    actors,
+    ledger,
+    approvals,
+    maxAttempts,
+  });
+
+  process.stdout.write(renderSdlcPlan(result, { descriptor }));
+  // Non-zero exit when the run did not reach Operate, so scripts/CI can gate on it.
+  if (result.status !== 'complete') process.exitCode = result.status === 'aborted' ? 1 : 2;
+}
+
+// Load a task descriptor from: an existing file path (JSON), an inline JSON
+// string ('{...}'), or a bare task id/title. Always returns an object with at
+// least an `id` (so the default actors + ledger scope have a stable key).
+async function loadSdlcDescriptor(arg) {
+  const { existsSync, readFileSync } = await import('node:fs');
+  let descriptor;
+  if (existsSync(arg)) {
+    try {
+      descriptor = JSON.parse(readFileSync(arg, 'utf8'));
+    } catch (err) {
+      throw new Error(`sdlc: could not parse descriptor file ${arg}: ${err.message}`);
+    }
+  } else if (arg.trim().startsWith('{')) {
+    try {
+      descriptor = JSON.parse(arg);
+    } catch (err) {
+      throw new Error(`sdlc: could not parse inline JSON descriptor: ${err.message}`);
+    }
+  } else {
+    descriptor = { id: arg, title: arg };
+  }
+  if (!descriptor || typeof descriptor !== 'object') {
+    throw new Error('sdlc: descriptor must be an object');
+  }
+  if (!descriptor.id) descriptor.id = descriptor.title || 'sdlc-task';
+  return descriptor;
+}
+
+// Resolve the human co-sign approvals from flags (authoritative) then the
+// descriptor. `--approve-all` (or a bare `--approve`) co-signs every hard human
+// gate; `--approve spec,integrate` co-signs a named subset. Default: approve
+// nothing (a stranger's plan halts at the first human gate — the safe default).
+function parseSdlcApprovals(opts, descriptor) {
+  if (opts.approveAll || opts.approve === true) return true;
+  if (typeof opts.approve === 'string' && opts.approve.trim()) {
+    return opts.approve.split(',').map((s) => s.trim()).filter(Boolean);
+  }
+  if (descriptor && descriptor.approvals !== undefined) return descriptor.approvals;
+  return false;
+}
+
+function printSdlcUsage() {
+  console.log(`agix sdlc — drive a task through the loop-engineered SDLC gates
+
+  agix sdlc plan <task>   Deterministic preview: NO agent invocation, NO API key.
+                          Walks Orient→Spec→Design→Implement→Test→Integrate→
+                          (Root-cause on fail)→Release→Operate, printing each
+                          gate's verdict + who verifies + the human-escalation
+                          points, and writes the trajectory to the audit ledger.
+  agix sdlc run  <task>   Real-agent path: invokes the fleet via runtime.runAgent()
+                          for each phase (consumes tokens; takes agent actions).
+
+<task> is one of:
+  a task id/title        e.g. agix sdlc plan "ship the export button"
+  a descriptor .json     e.g. agix sdlc plan ./task.json
+  inline JSON            e.g. agix sdlc plan '{"id":"t","phases":{"test":{"verdict":"KILL"}}}'
+
+Descriptor shape (drives the deterministic actors):
+  {
+    "id": "task-1", "title": "…",
+    "phases": {                       // optional per-phase directive
+      "test": { "verdict": "KILL" },  // constant verdict, or…
+      "test": { "verdicts": ["KILL","GO"] }   // per-attempt (last repeats)
+    },
+    "approvals": ["spec","integrate","release"]   // optional human co-sign
+  }
+
+Flags:
+  --approve a,b,c   Co-sign the named hard human gates (spec / integrate / release)
+  --approve-all     Co-sign every hard human gate (clean end-to-end preview)
+  --max-attempts N  Per-phase RECYCLE / resume budget (default 3)
+  --tenant <id>     Ledger tenant/enterprise (default: agix)
+
+The four hard human gates (spec, integrate, release) never auto-advance. Without
+an approval the run halts 'awaiting_human' at the first one — that's the point:
+the plan shows exactly where a human decision is required. Exit is non-zero when
+the run does not reach Operate (2 = awaiting_human, 1 = aborted).
+`);
+}
+
+function printLedgerUsage() {
+  console.log(`agix ledger — read the governance audit ledger (append-only, read-only view)
+
+  agix ledger show [--kind <k>] [--since <ISO>] [--scope run=<id> role=<id> ...]
+                                     Print recent ledger entries (verdicts, gate
+                                     decisions, version_bump / release / launch)
+  agix ledger stats [--scope ...]    Counts by kind/verdict/phase + DORA + gate metrics
+  agix dora [--scope ...]            The DORA five + gate-rejection-rate + first-pass yield
+
+Flags:
+  --kind <k>     one of: gate_decision, verdict, merge, lease, release, version_bump, launch
+  --since <ISO>  inclusive lower bound on entry timestamp (e.g. 2026-07-01)
+  --scope ...    narrow to run=<id> / role=<id> / mandate=<id> / user=<id>
+  --tenant <id>  enterprise/tenant to read (default: agix)
+
+The ledger is the per-tenant system of record the governance fleet writes to
+(version-manager, release-manager, gtm-advisor, and every gate). These commands
+never write — they only render. An empty ledger prints "no entries yet".
+`);
+}
+
+// ─── bus (North Star P3 — the intra-agent communication bus) ─────────
+//
+// `agix bus up` provisions the local Rust `lewis-aos-bus` daemon. Unlike the
+// in-process busUp() (lib/agix-bus-provision.mjs), the CLI spawns the daemon
+// DETACHED (new process group + unref + stdio→logfile) so it survives the CLI
+// exiting — the "the CLI auto-provisions the bus" North Star line. State lives
+// under ~/.cache/agix-bus/ (matches the CLI's per-agent cache convention).
+
+async function dispatchBus(sub, rest) {
+  if (!sub || sub === 'help' || sub === '-h' || sub === '--help') {
+    printBusUsage();
+    return;
+  }
+
+  const opts = parseAgentFlags(rest);
+  const socketPath = (typeof opts.socket === 'string' && opts.socket) ? opts.socket : DEFAULT_SOCKET;
+  const log = (line) => process.stdout.write(line + '\n');
+
+  if (sub === 'up') {
+    const r = await busUpCommand({ socketPath, log });
+    if (r.exit !== 0) {
+      console.error(`✗ bus up failed · socket ${r.socketPath} could not become ready`);
+      process.exit(r.exit);
+    }
+    return;
+  }
+
+  if (sub === 'down') {
+    const r = await busDownCommand({ socketPath, log });
+    if (r.exit !== 0) process.exit(r.exit);
+    return;
+  }
+
+  if (sub === 'status') {
+    const r = await busStatusCommand({ socketPath, log, json: Boolean(opts.json) });
+    // status uses exit 3 for "down" so scripts can gate on it.
+    process.exit(r.exit);
+  }
+
+  console.error(`Unknown bus command: ${sub}`);
+  printBusUsage();
+  process.exit(64);
+}
+
+// ─── install / uninstall / smoke ─────────────────────────────────────
+
+// Reusable smoke invoker — runs the agent through the local runtime
+// with opts.smoke=true and returns { exit }. Used both by `agix agent
+// smoke` directly and as the rollback gate inside install. We pass
+// opts._=[] (no positional) so agents that dispatch on positional
+// arguments (e.g. sensei modes) hit their no-arg default path; the
+// runtime's smoke flag does the actual stubbing.
+async function runSmokeForName(name, { tenantId } = {}) {
+  try {
+    await runAgent(name, { smoke: true, tenant: tenantId || 'agix', _: [] });
+    return { exit: 0 };
+  } catch (err) {
+    return { exit: 1, error: err.message };
+  }
+}
+
+async function cmdInstall(rest) {
+  const [first, ...flagArgs] = rest;
+  if (!first) { console.error('Usage: agix agent install <name>|--all [--tenant=<id>] [--dry-run] [--skip-smoke]'); process.exit(64); }
+  const opts = parseAgentFlags(flagArgs);
+  const tenantId = opts.tenant || 'agix';
+  const dryRun = Boolean(opts.dryRun);
+  const skipSmoke = Boolean(opts.skipSmoke);
+  const log = (line) => process.stdout.write(line + '\n');
+
+  if (first === '--all' || opts.all) {
+    log(`Installing fleet · tenant=${tenantId}${dryRun ? ' · dry-run' : ''}${skipSmoke ? ' · skip-smoke' : ''}`);
+    const summary = await installAll({ tenantId, skipSmoke, runSmokeFn: runSmokeForName, log });
+    if (summary.unsupportedPlatform) {
+      // The user explicitly asked to install a schedule — exit non-zero,
+      // but with a clear message (NOT an opaque launchctl crash).
+      console.error('\n' + summary.error);
+      process.exit(1);
+    }
+    log('');
+    log(`Summary · ${summary.summary.ok}/${summary.summary.installable} ok · ${summary.summary.failed} failed · ${summary.summary.skipped} skipped (non-installable)`);
+    for (const r of summary.results) {
+      const mark = r.ok ? '✓' : '✗';
+      const detail = r.ok ? `${r.intervals?.length ?? 0} interval(s)` : r.error;
+      log(`  ${mark} ${r.name.padEnd(15)} ${detail}`);
+    }
+    if (!summary.allOk) process.exit(1);
+    return;
+  }
+
+  log(`Installing ${first} · tenant=${tenantId}${dryRun ? ' · dry-run' : ''}${skipSmoke ? ' · skip-smoke' : ''}`);
+  const r = await installAgent({ name: first, tenantId, dryRun, skipSmoke, runSmokeFn: runSmokeForName, log });
+  if (r.unsupportedPlatform) {
+    // The user explicitly asked to install a schedule — exit non-zero,
+    // but with a clear message (NOT an opaque launchctl crash).
+    console.error('\n' + r.error);
+    process.exit(1);
+  }
+  if (r.ok) {
+    if (dryRun) {
+      log(`(dry-run) plist would be written to ${r.plistPath}`);
+      log(`(dry-run) ${r.intervals.length} interval(s)`);
+    } else {
+      log(`✓ ${first} installed`);
+    }
+  } else {
+    log(`✗ ${first} failed: ${r.error}${r.rolledBack ? ' (rolled back)' : ''}`);
+    process.exit(1);
+  }
+}
+
+async function cmdUninstall(rest) {
+  const [first, ...flagArgs] = rest;
+  if (!first) { console.error('Usage: agix agent uninstall <name>|--all [--tenant=<id>]'); process.exit(64); }
+  const opts = parseAgentFlags(flagArgs);
+  const tenantId = opts.tenant || 'agix';
+  const log = (line) => process.stdout.write(line + '\n');
+
+  if (first === '--all' || opts.all) {
+    log(`Uninstalling fleet · tenant=${tenantId}`);
+    const summary = await uninstallAll({ tenantId, log });
+    if (summary.unsupportedPlatform) {
+      // launchd is macOS-only — uninstall is a graceful no-op elsewhere.
+      log('Nothing to uninstall — launchd agents are macOS-only (no scheduled agents could have been installed on this host).');
+      return;
+    }
+    log('');
+    log(`Summary · ${summary.results.filter(r => r.ok).length}/${summary.results.length} ok`);
+    if (!summary.allOk) process.exit(1);
+    return;
+  }
+
+  log(`Uninstalling ${first} · tenant=${tenantId}`);
+  const r = await uninstallAgent({ name: first, tenantId, log });
+  if (r.unsupportedPlatform) {
+    // launchd is macOS-only — uninstall is a graceful no-op elsewhere.
+    log(`Nothing to uninstall — launchd agents are macOS-only (no scheduled "${first}" could have been installed on this host).`);
+    return;
+  }
+  if (r.ok) {
+    log(`✓ ${first} uninstalled`);
+  } else {
+    log(`✗ ${first} failed: ${r.error}`);
+    process.exit(1);
+  }
+}
+
+async function cmdDoctor(rest) {
+  const [maybeName] = rest;
+  const opts = parseAgentFlags(rest);
+  const name = (maybeName && !maybeName.startsWith('--')) ? maybeName : null;
+  let report;
+  try {
+    report = await doctor({ name });
+  } catch (err) {
+    // Doctor's own failure contract per the spec: exit non-zero with
+    // a structured error object so consumers (Sensei brief) can flag
+    // "doctor itself broke" as worse than any individual red.
+    const obj = { error: err.constructor?.name || 'Error', message: err.message, partial_results: [] };
+    if (opts.json) console.log(JSON.stringify(obj, null, 2));
+    else console.error(`doctor: ${err.message}`);
+    process.exit(2);
+  }
+  // Platform guard — launchd doctor is macOS-only. Clean message, exit 0
+  // (doctor found nothing wrong; there's nothing launchd-shaped to check).
+  if (report.unsupportedPlatform) {
+    if (opts.json) console.log(JSON.stringify(report, null, 2));
+    else process.stdout.write(`\nagix doctor · ${report.host} · ${report.ran_at}\n\n${report.message}\n`);
+    return;
+  }
+  // Name supplied but no match → not-found error, not silent zero
+  if (name && report.agents.length === 0) {
+    const msg = `agent "${name}" not found under agents/`;
+    if (opts.json) console.log(JSON.stringify({ error: 'AgentNotFound', message: msg, partial_results: [] }, null, 2));
+    else console.error(`doctor: ${msg}`);
+    process.exit(2);
+  }
+  if (opts.json) {
+    console.log(JSON.stringify(report, null, 2));
+    if (report.summary.red > 0) process.exit(1);
+    return;
+  }
+  renderDoctorHuman(report);
+  if (report.summary.red > 0) process.exit(1);
+}
+
+function renderDoctorHuman(report) {
+  const symbol = (s) => ({ green: '✓', yellow: '!', red: '✗', skipped: '·' })[s] || '?';
+  const colorize = (s, text) => {
+    const codes = { green: '32', yellow: '33', red: '31', skipped: '90' };
+    if (!process.stdout.isTTY) return text;
+    const c = codes[s] || '0';
+    return `\x1b[${c}m${text}\x1b[0m`;
+  };
+  process.stdout.write(`\nagix doctor · ${report.host} · ${report.ran_at}\n\n`);
+  const nameWidth = Math.max(...report.agents.map((a) => a.agent.length), 5);
+  for (const a of report.agents) {
+    const tag = colorize(a.status, `${symbol(a.status)} ${a.status.toUpperCase()}`);
+    process.stdout.write(`${a.agent.padEnd(nameWidth)}  ${tag}\n`);
+    for (const c of a.checks) {
+      const csym = colorize(c.status, symbol(c.status));
+      process.stdout.write(`  ${csym} ${c.name.padEnd(28)}  ${c.detail || ''}\n`);
+      if (c.remediation) process.stdout.write(`     → ${c.remediation}\n`);
+    }
+    if (a.remediation && !a.checks.some((c) => c.remediation === a.remediation)) {
+      process.stdout.write(`  → ${a.remediation}\n`);
+    }
+    process.stdout.write(`\n`);
+  }
+  const s = report.summary;
+  process.stdout.write(`Summary · ${s.green} green · ${s.yellow} yellow · ${s.red} red · ${s.skipped} skipped · ${s.total} total\n`);
+}
+
+async function cmdSmoke(rest) {
+  const [name, ...flagArgs] = rest;
+  if (!name) { console.error('Usage: agix agent smoke <name> [--tenant=<id>]'); process.exit(64); }
+  const opts = parseAgentFlags(flagArgs);
+  const tenantId = opts.tenant || 'agix';
+  console.error(`Smoke · ${name} · tenant=${tenantId}`);
+  const startedAt = Date.now();
+  const r = await runSmokeForName(name, { tenantId });
+  const durationMs = Date.now() - startedAt;
+  if (r.exit === 0) {
+    console.error(`✓ smoke passed · ${durationMs}ms`);
+  } else {
+    console.error(`✗ smoke failed · exit=${r.exit} · ${durationMs}ms`);
+    if (r.error) console.error(`  ${r.error}`);
+    process.exit(r.exit);
+  }
+}
+
+// ─── agent new — scaffold a new working agent from the template (E.3) ─────
+//
+// The recursion / "OS-making" pillar: the AOS makes more of itself. One command
+// emits a complete, internally-consistent, IMMEDIATELY-smoke-green agent (the
+// same four-file shape every shipped agent carries) that a human can flesh out.
+// Q4 = template-first; mentor-assisted generation is the documented fast-follow.
+//
+//   agix agent new <name> [--trust observer|proposer|executor] [--description "..."]
+async function cmdNew(rest) {
+  const [name, ...flagArgs] = rest;
+  if (!name || name.startsWith('--')) {
+    console.error('Usage: agix agent new <name> [--trust observer|proposer|executor] [--description "..."]');
+    process.exit(64);
+  }
+  const opts = parseAgentFlags(flagArgs);
+  const trust = (typeof opts.trust === 'string' && opts.trust) ? opts.trust : DEFAULT_TRUST_LEVEL;
+  if (!VALID_TRUST_LEVELS.includes(trust)) {
+    console.error(`Invalid --trust "${trust}". One of: ${VALID_TRUST_LEVELS.join(', ')}.`);
+    process.exit(64);
+  }
+  const description = typeof opts.description === 'string' ? opts.description : '';
+
+  // WHERE to write: on a DEV checkout, the pack's in-tree agents/ (the built-in
+  // dev workflow — a freshly-generated agent shows up in the repo being hacked
+  // on). On an INSTALL, a USER-writable dir (`~/.config/agix/agents/`) — the
+  // install tree is read-only / wiped on `brew upgrade`, so writing user agents
+  // there crashes or loses them. Discovery scans BOTH, so the new agent is
+  // immediately listable / runnable / smokeable regardless. The target dir is
+  // resolved relative to this binary's pack root so it works from any cwd.
+  const __dirname = dirname(fileURLToPath(import.meta.url));
+  const packRoot = resolvePath(__dirname, '..');
+  const agentsDir = newAgentTargetDir({ repoRoot: packRoot });
+  const dev = isDevCheckout(packRoot);
+
+  let r;
+  try {
+    r = await scaffoldAgent({ name, trust, description, agentsDir });
+  } catch (err) {
+    console.error(`✗ agent new failed: ${err.message}`);
+    process.exit(1);
+  }
+  console.log(`✓ created ${r.dir}/ (trust=${r.trust})`);
+  if (r.trust === 'executor') {
+    console.error(`⚠ ${r.name} declares EXECUTOR trust — generated agents at this level can write files and run commands on your machine.`);
+    console.error(`  Trust is ADVISORY in v0.2 (declared, not sandbox-enforced — runtime enforcement is on the roadmap). Review the agent before you run it.`);
+  }
+  if (!dev) console.log(`  (user agents dir — persists across upgrades; discovered alongside the pack's agents)`);
+  for (const f of r.files) console.log(`    ${f.slice(r.dir.length + 1)}`);
+  console.log('');
+  console.log(`Next:`);
+  console.log(`  • smoke it now:   agix agent smoke ${r.name}`);
+  console.log(`  • run it:         agix agent run ${r.name} --text "hello"`);
+  console.log(`  • then sharpen the TODO(you) fields in ${r.name}/manifest.yaml + PERSONA.md`);
+  console.log(`  • add an eval:    ${r.name}/eval/${r.name}.suite.mjs (see agents/context-warden/eval/)`);
+}
+
+// Fan a task out to a warm worker over the bus (PHASE_BUS_RUNTIME_1 T.3).
+//   agix swarm --worker <name> --n <k> [--op ping|smoke] [--text "..."]
+// Requires a worker: `agix agent serve <name>` (in another shell). The bus dispatch is the
+// 0-token coordination; per-task wall-clock is the bus hop + the worker's work.
+async function cmdSwarm(rest) {
+  const opts = parseAgentFlags(rest);
+  const worker = opts.worker;
+  if (!worker) { console.error('Usage: agix swarm --worker <name> --n <k> [--op ping|smoke] [--text "..."]'); process.exit(64); }
+  const n = Number(opts.n || 3);
+  const op = opts.op || 'ping';
+  const socketPath = opts.socket || DEFAULT_SOCK;
+  const tasks = Array.from({ length: n }, (_, i) => ({ op, ...(opts.text ? { text: `${opts.text} (task ${i + 1})` } : {}) }));
+  console.error(`swarm → ${n} task(s) to '${worker}' (op=${op}) over the bus…`);
+  const t0 = Date.now();
+  let results;
+  try { results = await fanout(tasks, { worker, socketPath }); }
+  catch (e) { console.error(`swarm failed: ${e.message}`); process.exit(1); }
+  const ms = Date.now() - t0;
+  const ok = results.filter((r) => r && r.ok === true).length;
+  console.error(`✓ ${ok}/${n} ok in ${ms}ms (~${Math.round(ms / n)}ms/task over the bus)`);
+  if (ok === 0) console.error(`  (0 ok — is a worker running? start one: agix agent serve ${worker})`);
+  const last = results[results.length - 1];
+  if (last && last.warden) console.error(`  warm context: ${last.warden.items} item(s), tier=${last.warden.tier}${last.warden.compacted ? ' — compacted' : ''}`);
+  process.exit(ok === n ? 0 : 1);
+}
+
+// Run an agent as a WARM bus worker (PHASE_BUS_RUNTIME_1 T.0). It registers on the bus and
+// loops req→run→rep in one long-lived process — so per-task setup is paid ONCE (the warm
+// reuse, DL.1). Tasks: {op:'ping'} (liveness), {op:'smoke'} (model-free agent run),
+// {op:'run', opts} (real run). Ctrl-C to stop.
+async function cmdServe(rest) {
+  const [name, ...flagArgs] = rest;
+  if (!name) { console.error('Usage: agix agent serve <name> [--socket <path>] [--tenant <id>]'); process.exit(64); }
+  const opts = parseAgentFlags(flagArgs);
+  const tenantId = opts.tenant || 'agix';
+  const socketPath = opts.socket || DEFAULT_SOCK;
+  await ensureDaemon(socketPath);
+  const bus = createBus({ socketPath, agent: name, trust: 'executor' });
+  await bus.ready;
+  let served = 0;
+  let warm = [];   // T.2: the context this warm worker carries across tasks
+  bus.onRequest(async (payload) => {
+    served++;
+    const op = (payload && payload.op) || 'ping';
+    // T.2 — accumulate this task's text into the warm context, then run context-warden over
+    // the accumulation and compact if it trips (the bus + warden complementarity).
+    let wardenInfo = null;
+    if (payload && typeof payload.text === 'string') {
+      warm.push(payload.text);
+      // T.2 fix — relevance-aware compaction: hand the warden the current task's query (or its
+      // text) as a relevance hint so a buried-but-relevant OLD line survives compaction instead
+      // of being dropped by blind pin-recent. No hint → original pin-recent behavior.
+      const query = (payload && typeof payload.query === 'string' && payload.query) || payload.text;
+      const step = wardenStep(warm, { query });
+      if (step.shouldCompact) { warm = step.kept; }
+      wardenInfo = { tier: step.tier, flags: step.flags, items: warm.length, compacted: step.shouldCompact, strategy: step.strategy };
+      if (step.shouldCompact) console.error(`  ⚠ warm context compacted (${step.flags.join(',') || step.tier}) via ${step.strategy} — dropped ${step.dropped}, kept ${warm.length}${step.keptRelevant ? ` (${step.keptRelevant} relevance-retained)` : ''}`);
+    }
+    if (op === 'ping') return { ok: true, op, served, warden: wardenInfo };
+    if (op === 'smoke') { const r = await runSmokeForName(name, { tenantId }); return { ok: r.exit === 0, op, served, warden: wardenInfo }; }
+    if (op === 'run') { const r = await runAgent(name, payload.opts || {}); return { ok: true, op, served, warden: wardenInfo, result: r ?? null }; }
+    return { error: `unknown op: ${op}`, served, warden: wardenInfo };
+  });
+  console.error(`✓ ${name} serving on the bus (${socketPath}) — warm worker (context-warden guarding accumulation). Ctrl-C to stop.`);
+  process.on('SIGINT', () => { console.error(`\n${name} served ${served} task(s); closing.`); try { bus.close(); } catch { /* */ } process.exit(0); });
+  process.stdin.resume();
+}
+
+// Run agent eval suites. `agix agent eval <name>` (one agent), `agix agent eval --all`
+// (every suite — the CI gate), `agix agent eval --coverage` (which free-tier agents are missing one).
+async function cmdEval(rest) {
+  const [arg] = rest;
+  const line = (r) => `${r.pass ? '✓' : '✗'} ${r.agent}/${r.suite}${r.accuracy ? ' · ' + r.accuracy : ''}`;
+  const tail = (r, n) => r.output.split('\n').slice(-n).map((l) => '    ' + l).join('\n');
+
+  if (arg === '--coverage') {
+    const cov = coverageReport();
+    for (const c of cov) console.error(`  ${c.hasEval ? '✓' : '–'} ${c.name}`);
+    const missing = cov.filter((c) => !c.hasEval);
+    console.error(`\ncoverage: ${cov.length - missing.length}/${cov.length} free-tier agents have an eval${missing.length ? ' (missing: ' + missing.map((m) => m.name).join(', ') + ')' : ''}`);
+    process.exit(missing.length ? 1 : 0);
+  }
+
+  if (arg && arg !== '--all') {
+    const results = runAgentEvals(arg);
+    if (!results.length) { console.error(`No eval suite for ${arg} (expected agents/${arg}/eval/*.suite.mjs)`); process.exit(1); }
+    let ok = true;
+    for (const r of results) { console.error(line(r)); if (!r.pass) { ok = false; console.error(tail(r, 8)); } }
+    process.exit(ok ? 0 : 1);
+  }
+
+  const results = runAllEvals();
+  let pass = 0;
+  for (const r of results) { console.error(line(r)); if (r.pass) pass++; else console.error(tail(r, 4)); }
+  console.error(`\n${pass}/${results.length} suites passed`);
+  process.exit(pass === results.length ? 0 : 1);
+}
+
+// Flag parsing — `--flag value`, `--flag=value`, or boolean `--flag`.
+// `--no-foo` produces BOTH `{ foo: false }` (idiomatic negation) AND
+// `{ noFoo: true }` (literal capture) so agents that use either
+// convention work. Positional args (anything before the first --flag)
+// collect into `opts._` as an array — Sensei uses this for its
+// `brief`/`chat`/`plan`/`session start <name>` subcommand surface.
+// Values that look like numbers are converted; everything else stays
+// string. Camel-cased keys (`--max-threads` → `maxThreads`).
+function parseAgentFlags(args) {
+  const out = { _: [] };
+  for (let i = 0; i < args.length; i++) {
+    const a = args[i];
+    if (!a.startsWith('--')) {
+      // Positional — collect into opts._
+      out._.push(a);
+      continue;
+    }
+    let key = a.slice(2);
+    let val;
+    const eq = key.indexOf('=');
+    if (eq !== -1) {
+      val = key.slice(eq + 1);
+      key = key.slice(0, eq);
+    } else {
+      const peek = args[i + 1];
+      if (peek !== undefined && !peek.startsWith('--')) {
+        val = peek;
+        i++;
+      } else {
+        val = true;
+      }
+    }
+    const camel = key.replace(/-([a-z])/g, (_, c) => c.toUpperCase());
+    const coerced = (typeof val === 'string' && /^-?\d+(\.\d+)?$/.test(val)) ? Number(val) : val;
+    out[camel] = coerced;
+    // Also emit the negated form: `--no-foo` → `{ foo: false }`.
+    if (key.startsWith('no-') && val === true) {
+      const positive = key.slice(3).replace(/-([a-z])/g, (_, c) => c.toUpperCase());
+      out[positive] = false;
+    }
+  }
+  return out;
+}
+
+function printUsage() {
+  console.log(`agix — Agix agent runtime CLI
+
+Usage:
+  agix                                                 Interactive mentor (auto-onboards on first run)
+  agix init [--defaults]                               First-run setup: provision everything, pick provider, get-to-know-you
+  agix agent list                                      List installed agents
+  agix agent show <name>                               Print an agent's manifest as JSON
+  agix agent new <name> [--trust <lvl>] [--description] Scaffold a new working agent from the template
+  agix agent run <name> [flags...]                     Run an agent locally
+  agix agent install <name>|--all [--tenant=<id>]      Generate plist, bootstrap launchd, smoke
+  agix agent uninstall <name>|--all [--tenant=<id>]    Bootout, remove plist, clear install record
+  agix agent smoke <name> [--tenant=<id>]              Dry-run validation: stubs Anthropic/email/fires
+  agix agent doctor [<name>] [--json]                  Verify fleet health (loaded/scheduled/healthy)
+
+  agix soul show                                       Print your instance soul.md (it grows with you)
+  agix soul note "<learning>"                          Append a dated learning to the soul
+
+  agix sdlc plan <task>                                Deterministic SDLC preview (no API key): phases, verdicts, human gates
+  agix sdlc run <task>                                 Real-agent SDLC path: drives the fleet through the gates
+
+  agix ledger show [--kind K] [--since ISO]            Read the governance audit ledger (verdicts, gates, releases)
+  agix ledger stats                                    Ledger counts + DORA + gate metrics
+  agix dora                                            DORA five + gate-rejection-rate + first-pass yield
+
+  agix bus up [--socket <path>]                        Provision the Rust intra-agent bus daemon (detached)
+  agix bus down [--socket <path>]                      Stop the running bus daemon, clean up its socket
+  agix bus status [--socket <path>] [--json]           Report whether the bus is up
+
+  agix uninstall [--purge-state]                       Remove Agix's per-user state (~/.config/agix, caches)
+
+Examples:
+  agix agent install --all
+  agix agent smoke sensei
+  agix agent run sensei
+  agix agent run research --no-research --no-mail
+  agix agent run tester
+  agix bus up
+  agix bus status
+
+Docs: https://github.com/blewis-maker/homebrew-agix
+`);
+}
+
+function printBusUsage() {
+  console.log(`agix bus — the Rust intra-agent communication bus (North Star pillar P3)
+
+  agix bus up [--socket <path>]              Provision the local lewis-aos-bus daemon
+  agix bus down [--socket <path>]            Stop the running daemon, remove its socket
+  agix bus status [--socket <path>] [--json] Report whether the bus is up
+
+Default socket: ${DEFAULT_SOCKET}
+
+How 'up' persists:
+  The daemon is spawned DETACHED (its own process group, unref'd, stdout/stderr
+  redirected to a logfile) so it keeps running after this CLI command exits —
+  unlike the in-process busUp() surface, which ties the daemon's lifetime to the
+  calling process. A marker (pid + socket + log path) is recorded under
+  ~/.cache/agix-bus/ so 'down' and 'status' can find the running daemon. The
+  daemon binary is built on demand (cargo build --release --offline) if absent.
+
+Exit codes:
+  up      0 = up (or already up), 1 = the daemon could not become ready
+  down    0 = stopped or already down
+  status  0 = up, 3 = down (so scripts can gate on it)
+`);
+}
+
+function printAgentUsage() {
+  console.log(`agix agent — agent runtime commands
+
+  agix agent list                                      List installed agents
+  agix agent show <name>                               Print an agent's manifest as JSON
+  agix agent new <name> [--trust <lvl>] [--description] Scaffold a new working agent from the template
+  agix agent run <name> [flags...]                     Run an agent locally
+  agix agent install <name>|--all [--tenant=<id>]      Generate plist, bootstrap launchd, smoke
+  agix agent uninstall <name>|--all [--tenant=<id>]    Bootout, remove plist, clear install record
+  agix agent smoke <name> [--tenant=<id>]              Dry-run validation: stubs Anthropic/email/fires
+  agix agent doctor [<name>] [--json]                  Verify fleet health (loaded/scheduled/healthy)
+
+New flags:
+  --trust <lvl>     observer | proposer | executor (default proposer)
+  --description "…" One-line description baked into the manifest
+
+Install flags:
+  --dry-run         Compose the plist but don't write or bootstrap
+  --skip-smoke      Bypass smoke-on-install (advanced; defeats rollback safety)
+
+Run flags are forwarded to the agent's run({opts}). Use --flag value, --flag=value,
+or --no-flag (boolean false). Snake-case becomes camel-case (--max-threads → maxThreads).
+`);
+}

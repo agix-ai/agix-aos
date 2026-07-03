@@ -1,0 +1,48 @@
+{
+  "date": "2026-06-18",
+  "results": [
+    {
+      "name": "token-economics",
+      "question": "How much agent context does the CLI protocol save vs MCP static schema preload?",
+      "reproduce": "node bench/agix-bench.mjs token-economics",
+      "summary": "94.5% fewer tokens (18.3×) at a 5-op session; advantage is insulated from catalog growth.",
+      "rows": [
+        {
+          "metric": "5-op session — MCP (preload ×5)",
+          "value": "25,545 tokens"
+        },
+        {
+          "metric": "5-op session — CLI (--help ×5)",
+          "value": "1,395 tokens"
+        },
+        {
+          "metric": "5-op reduction",
+          "value": "94.5% (18.3×)"
+        },
+        {
+          "metric": "10-op reduction",
+          "value": "94.5% (18.3×)"
+        },
+        {
+          "metric": "Catalog 2× (62 tools): MCP 5-op",
+          "value": "51,090 tokens (doubles)"
+        },
+        {
+          "metric": "Catalog 2× (62 tools): CLI 5-op",
+          "value": "1,395 tokens (unchanged)"
+        },
+        {
+          "metric": "Structural moat",
+          "value": "MCP cost O(tools×ops); CLI O(1) in tools — gap widens as the surface grows"
+        }
+      ],
+      "meta": {
+        "source": "internal baseline (measured 2026-06-16)",
+        "tools": 31,
+        "schemaTokensTotal": 5109,
+        "cliHelpTokens": 279,
+        "model": "MCP=schemaTokensTotal×ops; CLI=cliHelpTokens×distinct"
+      }
+    }
+  ]
+}

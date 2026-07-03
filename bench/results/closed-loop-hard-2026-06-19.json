@@ -1,0 +1,25 @@
+{
+  "benchmark": "reliability-closed-loop-hard",
+  "date": "2026-06-19",
+  "what": "Paid managed-vs-native answer-correctness over 15 HARD scenarios (lost-in-the-middle at 13-14K tokens = 2.3x effective length, marker-contradiction, markerless-contradiction), 3 arms: native (raw context), pin-recent (the old shipped wardenStep), relevance-aware (the fix, PR #146). ~45 real Anthropic calls. The closed-loop arm of Comparison-2 — now MEASURED.",
+  "provider": "anthropic", "model": "claude-sonnet-4-6 (default-quality route)", "n": 15, "arms": 3, "paid_calls": 45,
+  "results_by_regime": {
+    "lost-in-the-middle":      { "n": 5, "native": 5, "pin_recent": 0, "relevance_aware": 5, "delta_pin": -5, "delta_kwa": 0, "read": "pin-recent HURT (dropped the buried needle 5/5); relevance-aware recovered it" },
+    "marker-contradiction":    { "n": 5, "native": 5, "pin_recent": 5, "relevance_aware": 5, "delta_pin": 0, "delta_kwa": 0, "read": "neutral — base model resolved supersede cases unaided" },
+    "markerless-contradiction":{ "n": 5, "native": 5, "pin_recent": 5, "relevance_aware": 5, "delta_pin": 0, "delta_kwa": 0, "read": "neutral — base model inferred the current value from dates/order unaided" }
+  },
+  "totals": { "native": 15, "pin_recent": 10, "relevance_aware": 15 },
+  "weak_model_followup_haiku_2026_06_19": "Re-ran identically on claude-haiku-4-5 (weak-model regime, eff=4000): IDENTICAL result — native 15/15, pin-recent 10/15, relevance-aware 15/15. Even a weak model is robust at 13-14K tokens → the limiting variable is SCALE (~7% of the 200K window), not model strength. This reframed the warden's purpose: SESSION-HEALTH ADVISOR (warn the user to switch/compact a long session before degradation), NOT an auto-compactor. Next: a near-capacity native degradation curve to set the warning threshold.",
+  "findings": [
+    "1. THE BASE MODEL IS ROBUST at these scales — native 15/15, even on 13-14K-token lost-in-the-middle and markerless contradictions. It does NOT need context management to get these right.",
+    "2. THE OLD SHIPPED COMPACTION (pin-recent) was a NET NEGATIVE — it degraded answers 15→10 by dropping the buried needle in every lost-in-the-middle case. A real bug we had shipped (used by the warm worker, T.2).",
+    "3. THE FIX (relevance-aware, PR #146) NEUTRALIZES the harm — back to 15/15, parity with native. It STOPS the damage but does not BEAT the base model."
+  ],
+  "honest_conclusion": "Context-warden's compaction does NOT improve answer-correctness over a frontier base model at the scales we can test — the model is too good. Its measured value is COST/SAFETY (compact a 14K-token context down to the answer-bearing lines to save tokens) WITHOUT degrading answers — now that the fix preserves the needle. The 'improves reliability/quality' claim is NOT supported by this evidence and should not be made. The quality benefit would require a regime where the model genuinely degrades (smaller/older models, far longer contexts, or adversarial poisoning the model can't resolve) — not yet demonstrated.",
+  "caveats": [
+    "N=5/regime — directional. Native 15/15 means we never observed model failure to rescue, so 'management helps when the model would fail' is untested (we couldn't make the model fail).",
+    "Single model (claude-sonnet-4-6). A weaker/cheaper model might degrade where this one didn't — that is the regime to test next.",
+    "Substring/normalized answer scoring; short verifiable answers.",
+    "Reproduce: AGIX_BENCH_PAID=1 node bench/reliability/score.mjs --closed-loop-hard"
+  ]
+}

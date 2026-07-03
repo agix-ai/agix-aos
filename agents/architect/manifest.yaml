@@ -1,0 +1,39 @@
+name: architect
+display_name: Agix Architect (CTO Agent)
+description: Cross-references new Research findings against in-flight specs in wiki/director/specs/. Annotates relevant specs and flags duplicates with prior briefs. Never edits outside markers.
+
+# Distribution tier (Phase B). basic = free public pack · pro = paid · enterprise = private.
+tier: basic
+
+runtime:
+  language: nodejs
+  node_version: '>=20'
+  memory_mb: 512
+  timeout_sec: 600
+
+# Phase 1 has no Workspace API surface — annotates local repo files only.
+auth: null
+
+# Mon + Fri 18:30 — 30 minutes after Research fires so the new brief is on
+# disk before the Architect runs. Mirror of launchd/io.agix.architect.plist.
+schedule:
+  - cron: '30 18 * * 1'
+  - cron: '30 18 * * 5'
+timezone: '${tenant.timezone}'
+
+outputs:
+  - kind: file
+    path: wiki/director/specs/*.md
+    mode: marker-replace          # only the <!-- ARCHITECT:BEGIN/END --> block is touched
+  - kind: state
+    name: cursor
+    schema: '{ last_run_at: ISO8601 }'
+
+config:
+  - ANTHROPIC_API_KEY: required
+
+defaults:
+  scan_model: claude-sonnet-4-6
+  lookback_days: 28
+  marker_begin: '<!-- ARCHITECT:BEGIN -->'
+  marker_end: '<!-- ARCHITECT:END -->'

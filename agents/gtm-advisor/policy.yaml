@@ -1,0 +1,61 @@
+# gtm-advisor — advisory policy (AGA.Soul.1 Layer 2).
+# Companion to the soul block in manifest.yaml. Declares WHAT this agent SHOULD
+# do (capabilities + boundaries it honors). v0.2 does NOT sandbox-enforce this at
+# runtime; runtime enforcement is on the roadmap (see SECURITY.md). Documented
+# intent, not a runtime guarantee.
+#
+# gtm-advisor owns launch TIERING + GTM. It reads the release shape + the
+# version-manager's bump; it writes ONLY its own report surface and governance
+# ledger. The human-gated actions (a Tier 0/1 launch + public positioning
+# sign-off) require escalation — the gate routes them to HOLD.
+agent: gtm-advisor
+trust_level: proposer
+
+filesystem:
+  # Reads the release/version context, its own prior launch records, and the
+  # release/GTM + brand architecture docs (positioning must honor the brand).
+  read:
+    - 'package.json'
+    - 'CHANGELOG.md'
+    - 'wiki/version-manager/'
+    - 'wiki/release-manager/'
+    - 'wiki/gtm-advisor/'
+    - 'agents/gtm-advisor/'
+    - 'architecture/'
+  # Proposer trust: writes ONLY its own report surface.
+  write:
+    - 'wiki/gtm-advisor/'
+  # Hard deny: a GTM gate must never mutate source, the deploy pipeline, or the
+  # shared substrate.
+  deny:
+    - '.github/workflows/'
+    - 'services/'
+    - 'apps/'
+    - 'lib/'
+    - 'bin/'
+
+tools:
+  allow: [Read, Grep, Glob, Write]
+
+bash:
+  # A proposer never publishes marketing, never deploys, never tags/pushes.
+  # Advisory in v0.2 (documented intent, not sandbox-enforced at runtime).
+  deny_patterns:
+    - 'gh release create'
+    - 'git push'
+    - 'git push.*--force'
+    - 'gcloud .*deploy'
+    - 'firebase deploy'
+    - 'npm publish'
+
+inference:
+  # A standalone GTM gate — it drafts, verifies, and proposes; it does not fan out.
+  can_delegate_to: []
+  max_tool_calls: 60
+
+# The human co-sign points this agent routes to a person (verdict HOLD):
+escalations:
+  - 'A Tier 0/1 launch approval (M1).'
+  - 'A tier that does not match the version bump — a MAJOR shipping as a low tier (M1).'
+  - 'A launch off the release/GA calendar — marketing/embargo out of sync (M4).'
+  - 'Public positioning sign-off.'

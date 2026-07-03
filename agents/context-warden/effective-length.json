@@ -1,0 +1,13 @@
+{
+  "_note": "Effective RELIABLE context length per model (NoLiMa/RULER-derived) — far below the advertised window; this is the accuracy-relevant denominator (arXiv 2510.05381: length degrades accuracy even with perfect retrieval). REFRESHABLE — update as models change; never hard-code char/token ratios across model generations (~30% tokenizer drift on newest Claude).",
+  "_updated": "2026-06-18",
+  "default": { "effective": 8000, "advertised": 128000 },
+  "models": {
+    "claude-opus-4-8":   { "effective": 8000, "advertised": 200000 },
+    "claude-sonnet-4-6": { "effective": 6000, "advertised": 200000 },
+    "claude-haiku-4-5":  { "effective": 4000, "advertised": 200000 },
+    "gpt-4o":            { "effective": 8000, "advertised": 128000, "source": "NoLiMa" },
+    "gpt-4-turbo":       { "effective": 16000, "advertised": 128000, "source": "Databricks peak" },
+    "gemini-1.5-pro":    { "effective": 2000, "advertised": 1000000, "source": "NoLiMa (gentle slope, can extend)" }
+  }
+}

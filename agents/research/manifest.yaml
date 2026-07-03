@@ -1,0 +1,51 @@
+name: research
+display_name: Agix Research Agent
+description: Scans curated sources twice weekly, synthesizes a structured 6-section brief, grades it, and emails the operator.
+
+# Distribution tier (Phase B). basic = free public pack · pro = paid · enterprise = private.
+tier: basic
+
+runtime:
+  language: nodejs
+  node_version: '>=20'
+  memory_mb: 512
+  timeout_sec: 900
+
+# Research does not touch Workspace APIs at runtime — its only Google
+# surface is the SMTP send for the briefing email, which goes through the
+# Workspace app-password flow inside lib/agix-send.mjs (not a DWD subject).
+auth: null
+
+# Three times weekly — Mon, Fri, Sat at 18:00 local. Saturday added
+# 2026-05-17 so Sunday morning Sensei has fresh field-state intelligence.
+# Mirror of launchd/io.agix.research.plist.
+schedule:
+  - cron: '0 18 * * 1'
+  - cron: '0 18 * * 5'
+  - cron: '0 18 * * 6'
+timezone: '${tenant.timezone}'
+
+outputs:
+  - kind: file
+    path: wiki/research/{{date}}-brief.md
+  - kind: file
+    path: wiki/log.md
+    mode: append
+  - kind: email
+    template: briefing
+    to: '${tenant.operator_email}'
+
+config:
+  - ANTHROPIC_API_KEY: required
+  - SMTP_APP_PASSWORD: required
+
+defaults:
+  scan_model: claude-haiku-4-5
+  synth_model: claude-sonnet-4-6
+  critic_model: claude-opus-4-7
+  max_items: 40
+  min_relevance_score: 3
+  fetch_concurrency: 4
+  fetch_timeout_ms: 20000
+  source_content_max_chars: 12000
+  operator_first_name: ""

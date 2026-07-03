@@ -1,0 +1,59 @@
+#!/usr/bin/env node
+// agix-research — backwards-compatible CLI shim.
+//
+// Logic lives at agents/research/agent.mjs (which folds in the old
+// agix-research scan + the old agix-research-and-mail wrapper). This
+// shim preserves the original `--no-mail` semantic so anyone who called
+// `node bin/agix-research` directly (no email) still gets just the
+// scan-and-write behavior.
+//
+// New invocations should use:  node bin/agix agent run research [flags]
+
+import { runAgent } from '../lib/agix-runtime.mjs';
+
+const argv = process.argv.slice(2);
+// Default to no-mail since the original bin/agix-research never sent email.
+const opts = { noMail: true };
+for (let i = 0; i < argv.length; i++) {
+  const a = argv[i];
+  switch (a) {
+    case '--dry-run': opts.dryRun = true; break;
+    case '--source': opts.source = argv[++i]; break;
+    case '--max-items': opts.maxItems = Number(argv[++i]); break;
+    case '--skip-critic': opts.skipCritic = true; break;
+    case '--date': opts.date = argv[++i]; break;
+    case '--mail': opts.noMail = false; break;
+    case '-h': case '--help': showHelp(); process.exit(0);
+    default:
+      console.error(`Unknown argument: ${a}`);
+      showHelp();
+      process.exit(64);
+  }
+}
+
+try {
+  await runAgent('research', opts);
+} catch (err) {
+  console.error('FATAL:', err.message);
+  if (process.env.DEBUG) console.error(err.stack);
+  process.exit(1);
+}
+
+function showHelp() {
+  console.log(`agix-research — Agix's research-scan shim (scan only, no email)
+
+Usage:
+  agix-research                     Full scan, writes wiki/research/<date>-brief.md
+  agix-research --mail              Also email the brief (matches old agix-research-and-mail)
+  agix-research --dry-run           Print brief to stdout, no file writes
+  agix-research --source <name>     Scan only one named source
+  agix-research --max-items N       Cap items entering synthesis pool
+  agix-research --skip-critic       Skip Opus critic pass
+  agix-research --date <YYYY-MM-DD> Override the date in the brief filename
+  --help                            Show this help
+
+Equivalent: node bin/agix agent run research --no-mail [flags]
+Implementation: agents/research/agent.mjs
+Spec:           architecture/03-ai-ml/agent-architecture/RESEARCH_AGENT.md
+`);
+}

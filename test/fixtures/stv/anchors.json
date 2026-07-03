@@ -1,0 +1,43 @@
+{
+  "_comment": "Director queue items used to harvest human anchor labels. q-a and q-d overlap execution-labeled keys (used to assert disjointness: they must end up ONLY in the anchor set). q-defer and q-unrelated must be omitted.",
+  "items": [
+    {
+      "id": "q-a",
+      "title": "CI failing on main",
+      "source_agent": "director",
+      "source_check": "deploy-health",
+      "finding_key": "ci-failing@aaaa00000001",
+      "verb": "fix",
+      "status": "in-progress",
+      "updated_at": "2026-05-20T13:00:00.000Z"
+    },
+    {
+      "id": "q-d",
+      "title": "App Hosting rollout behind HEAD",
+      "source_agent": "director",
+      "source_check": "deploy-health",
+      "finding_key": "apphosting-gap@dddd00000001",
+      "verb": "skip",
+      "status": "dismissed",
+      "updated_at": "2026-05-23T07:00:00.000Z"
+    },
+    {
+      "id": "q-defer",
+      "title": "App Hosting rollout behind HEAD (later)",
+      "source_agent": "director",
+      "source_check": "deploy-health",
+      "finding_key": "apphosting-gap@cccc00000001",
+      "verb": "defer",
+      "status": "deferred",
+      "updated_at": "2026-05-22T13:00:00.000Z"
+    },
+    {
+      "id": "q-unrelated",
+      "title": "Research Brief: process reward models",
+      "source_agent": "research",
+      "verb": "approve",
+      "status": "in-progress",
+      "updated_at": "2026-05-19T10:00:00.000Z"
+    }
+  ]
+}

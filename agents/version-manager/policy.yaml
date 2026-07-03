@@ -1,0 +1,61 @@
+# version-manager — advisory policy (AGA.Soul.1 Layer 2).
+# Companion to the soul block in manifest.yaml. Declares WHAT this agent SHOULD
+# do (capabilities + boundaries it honors). v0.2 does NOT sandbox-enforce this at
+# runtime; runtime enforcement is on the roadmap (see SECURITY.md). Documented
+# intent, not a runtime guarantee.
+#
+# version-manager owns versioning SEMANTICS. It reads the change descriptor,
+# changelog, and deprecation schedule; it writes ONLY its own report surface and
+# governance ledger. The human-gated actions (a MAJOR / breaking bump) require
+# escalation — the V1 gate routes them to HOLD.
+agent: version-manager
+trust_level: proposer
+
+filesystem:
+  # Reads the version source, changelog, deprecation schedule, its own prior
+  # reports for delta context, and the release/GTM architecture docs.
+  read:
+    - 'package.json'
+    - 'CHANGELOG.md'
+    - 'wiki/version-manager/'
+    - 'agents/version-manager/'
+    - 'architecture/'
+  # Proposer trust: writes ONLY its own report surface.
+  write:
+    - 'wiki/version-manager/'
+  # Hard deny: a semantics gate must never mutate the source it versions, the
+  # deploy pipeline, or the shared substrate.
+  deny:
+    - '.github/workflows/'
+    - 'services/'
+    - 'apps/'
+    - 'lib/'
+    - 'bin/'
+
+tools:
+  allow: [Read, Grep, Glob, Write]
+
+bash:
+  # A proposer never publishes a version, never tags/pushes, never deploys.
+  # Advisory in v0.2 (documented intent, not sandbox-enforced at runtime).
+  deny_patterns:
+    - 'npm version'
+    - 'npm publish'
+    - 'git tag'
+    - 'git push'
+    - 'git push.*--force'
+    - 'gh release create'
+    - 'gcloud .*deploy'
+    - 'firebase deploy'
+
+inference:
+  # A standalone semantics gate — it verifies and proposes; it does not fan out.
+  can_delegate_to: []
+  max_tool_calls: 60
+
+# The four human co-sign points this agent routes to a person (verdict HOLD):
+escalations:
+  - 'A MAJOR / breaking-change bump (V1).'
+  - 'A breaking change hiding in a declared PATCH/MINOR (V1).'
+  - 'A removal inside its deprecation-SLA window (V3).'
+  - 'An artifact rebuilt across rings — build-once/promote-many broken (V4).'

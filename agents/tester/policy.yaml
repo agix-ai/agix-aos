@@ -1,0 +1,40 @@
+# tester — advisory policy (AGA.Soul.1 Layer 2).
+# Companion to the soul: block in manifest.yaml. Declares the capabilities +
+# boundaries this agent SHOULD honor. v0.2 does NOT sandbox-enforce this at
+# runtime; runtime enforcement is on the roadmap (see SECURITY.md). This is
+# documented intent, not a runtime guarantee.
+agent: tester
+trust_level: proposer
+
+filesystem:
+  # Runs the suite + reads source to diagnose a red; writes ONLY its own
+  # report space. Never edits source to make a test pass.
+  read:
+    - 'agents/tester/'
+    - 'wiki/'
+    - 'architecture/'
+  write:
+    - 'wiki/tester/'
+  deny:
+    - 'backend/'
+    - 'frontend/'
+    - 'agents/*/agent.mjs'
+    - '.github/'
+
+tools:
+  allow: [Read, Grep, Glob, Bash, Write]
+
+bash:
+  # A proposer reports + proposes; it never edits source, commits, pushes, or
+  # merges, and never deletes/skips a test. ADVISORY in v0.2 — declared, not
+  # enforced. (Bash is allowed so it can run the test suite.)
+  deny_patterns:
+    - 'git push'
+    - 'git commit'
+    - 'gh pr merge'
+    - 'gh release (create|edit|upload|delete)'
+    - 'gcloud secrets versions access'
+
+inference:
+  can_delegate_to: []
+  max_tool_calls: 100

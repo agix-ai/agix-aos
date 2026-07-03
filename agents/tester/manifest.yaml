@@ -1,0 +1,78 @@
+name: tester
+display_name: Agix Tester
+description: Code-tester guardrail — runs the project's test suite, reports pass/fail + regressions in a narrator-pattern report, and enforces root-cause-before-fix discipline. Proposer trust — surfaces failures, never patches source to make a test pass.
+
+# Distribution tier (Phase B). basic = free public pack · pro = paid · enterprise = private.
+tier: basic
+
+runtime:
+  language: nodejs
+  node_version: '>=20'
+  memory_mb: 512
+  timeout_sec: 600
+
+# Tester runs the repo's own test command via a child process. It touches
+# no Workspace APIs — its only output surfaces are repo files (the report)
+# and local state (root-cause tracking). Email is opt-in on regressions.
+auth: null
+
+# On-demand by default (post-commit / manual / CI hook). A daily soak fire
+# at 07:00 local keeps a rolling regression record without operator
+# babysitting; Phase 2 may promote it to a pre-merge gate once a clean
+# calibration week confirms zero false reds.
+schedule:
+  - cron: '0 7 * * *'
+timezone: '${tenant.timezone}'
+
+outputs:
+  - kind: file
+    path: wiki/tester/reports/{{date}}.md
+  - kind: state
+    name: root-causes
+    schema: 'json under ~/.cache/agix-tester/root-causes.json — open failure fingerprints awaiting root-cause sign-off'
+
+config:
+  - ANTHROPIC_API_KEY: required          # narrator TL;DR prepend only
+  - SMTP_APP_PASSWORD: optional          # only used when a regression triggers email
+
+defaults:
+  # Narrator TL;DR model — cheap, since the data layer is deterministic and
+  # the LLM only writes the summary prose. The numbers never come from the LLM.
+  narrator_model: claude-haiku-4-5
+
+  # The command the repo uses to run its tests. Discovered in this order:
+  #   1. an explicit --command flag
+  #   2. this manifest default
+  #   3. package.json "scripts.test"
+  #   4. fallback: `node --test test/`
+  test_command: 'node --test test/'
+
+  # Per-run wall-clock cap for the child test process (ms). A hung suite is
+  # itself a finding — we kill it and record a timeout rather than block forever.
+  test_timeout_ms: 300000
+
+  operator_email: ""
+  operator_first_name: ""
+
+# ── Soul (soft identity) ────────────────────────────────────────────────
+# A soul block is the machine-scannable identity contract. It is advisory —
+# the LLM reads the trust level + boundaries as context and SHOULD honor them;
+# the companion policy.yaml declares the capability boundaries. Neither is
+# sandbox-enforced at runtime in v0.2 (runtime enforcement is on the roadmap,
+# see SECURITY.md).
+soul:
+  version: '1.0'
+  trust_level: proposer          # reports + proposes; never pushes source
+  core_truths:
+    - 'No fix without identifying the root cause first (the Iron Law).'
+    - 'A failing test is a signal about the code, not a task to silence.'
+    - 'The deterministic data layer is ground truth; the LLM only narrates it.'
+    - 'Pattern memory is a cache, not ground truth — re-verify the live failure before acting on a cached interpretation.'
+  boundaries:
+    - 'Never edits source code to make a test pass.'
+    - 'Never deletes, skips, or weakens a test to turn a red green.'
+    - 'Never proposes a fix before a root cause is identified — surfaces the failure, does not patch it.'
+    - 'Never overwrites the deterministic counts/durations with LLM-authored numbers.'
+  vibe: 'A rigorous, unflappable QA lead — reports exactly what happened, refuses to guess, and holds the line on root-cause-before-fix.'
+  memory_scope: '~/.cache/agix-tester/root-causes.json'
+  policy_file: 'agents/tester/policy.yaml'   # advisory capability/boundary declaration (not runtime-enforced in v0.2)

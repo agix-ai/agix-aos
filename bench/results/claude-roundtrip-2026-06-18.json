@@ -1,0 +1,32 @@
+{
+  "benchmark": "claude-coordination-roundtrip",
+  "date": "2026-06-18",
+  "what": "Cost of one Claude agent-to-agent coordination round-trip — the minimal possible subagent (reply 'pong', zero tools). Establishes the per-coordination 'communication tax' Claude pays that an Agix bus signal avoids.",
+  "method": "Each sample = one Agent-tool subagent dispatched from the main session; usage object read directly (subagent_tokens, duration_ms). HAND-RECORDED from the harness, not a CI-runnable probe (it requires the Agent runtime). N=16 across two batches (4 sequential + 12 concurrent).",
+  "reproducibility": "Re-run by dispatching N minimal subagents and recording the usage object. Tokens are deterministic to ~5 tokens; duration depends on load + concurrency.",
+  "n": 16,
+  "samples": [
+    {"i": 1,  "tokens": 75244, "duration_ms": 1462, "batch": "sequential"},
+    {"i": 2,  "tokens": 75223, "duration_ms": 1468, "batch": "sequential"},
+    {"i": 3,  "tokens": 75223, "duration_ms": 1151, "batch": "sequential"},
+    {"i": 4,  "tokens": 75223, "duration_ms": 1418, "batch": "sequential"},
+    {"i": 5,  "tokens": 75223, "duration_ms": 1905, "batch": "concurrent"},
+    {"i": 6,  "tokens": 75223, "duration_ms": 2194, "batch": "concurrent"},
+    {"i": 7,  "tokens": 75223, "duration_ms": 1383, "batch": "concurrent"},
+    {"i": 8,  "tokens": 75223, "duration_ms": 1225, "batch": "concurrent"},
+    {"i": 9,  "tokens": 75223, "duration_ms": 1777, "batch": "concurrent"},
+    {"i": 10, "tokens": 75223, "duration_ms": 1505, "batch": "concurrent"},
+    {"i": 11, "tokens": 75223, "duration_ms": 8647, "batch": "concurrent", "note": "scheduling outlier under 12-way concurrency"},
+    {"i": 12, "tokens": 75223, "duration_ms": 1232, "batch": "concurrent"},
+    {"i": 13, "tokens": 75223, "duration_ms": 1284, "batch": "concurrent"},
+    {"i": 14, "tokens": 75223, "duration_ms": 1354, "batch": "concurrent"},
+    {"i": 15, "tokens": 75223, "duration_ms": 1160, "batch": "concurrent"},
+    {"i": 16, "tokens": 75223, "duration_ms": 2061, "batch": "concurrent"}
+  ],
+  "stats": {
+    "tokens": {"mean": 75224, "min": 75223, "max": 75244, "spread": 21, "cv_pct": 0.007, "note": "essentially CONSTANT — fixed per-spawn overhead (system prompt + tool defs), invariant to the trivial task → it is overhead, not work"},
+    "duration_ms": {"median": 1440, "trimmed_mean_n15": 1505, "mean_all": 1952, "min": 1151, "max": 8647, "note": "mean inflated by one concurrency-scheduling outlier (8647ms); median/trimmed-mean are the honest central tendency"}
+  },
+  "bus_comparison": {"agix_bus_tokens": 0, "agix_bus_latency_us": 8.571, "source": "bench/agix-bench.mjs bus-latency (p2p-binary)"},
+  "honest_scope": "This is the cost of a COORDINATION round-trip (a handoff/signal), not of reasoning. A bus avoids it only for coordination steps that need no fresh reasoning; reasoning steps cost an LLM call in either architecture. See wiki/research/EFFICIENCY_BENCHMARK_COMMUNICATION_TAX_2026-06-18.md."
+}

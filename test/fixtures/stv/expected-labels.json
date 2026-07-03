@@ -1,0 +1,35 @@
+{
+  "_comment": "Ground-truth expected outputs for the canonical fixture. Phase 1 agent's tests assert labelDeployHealthExecution(history) yields exactly these label values per findingKey, and that buildLabeledCorpus enforces anchor disjointness with these counts.",
+  "executionLabels": {
+    "ci-failing@aaaa00000001": 1,
+    "ci-failing@bbbb00000001": -1,
+    "apphosting-gap@cccc00000001": 1,
+    "apphosting-gap@dddd00000001": -1,
+    "ci-failing@eeee00000001": 1,
+    "deploy-skipped@eeee00000001": 1
+  },
+  "executionRationale": {
+    "ci-failing@aaaa00000001": "CI went green at a different head (aaaa00000002) — a fix commit had to land",
+    "ci-failing@bbbb00000001": "CI went green on the same head (bbbb00000001) — flake",
+    "apphosting-gap@cccc00000001": "gap persisted 2 cycles then a rollout caught up (gap 3 -> 0, SUCCEEDED)",
+    "apphosting-gap@dddd00000001": "gap cleared on the next cycle with no persistence",
+    "ci-failing@eeee00000001": "CI went green at a different head (eeee00000002) — a fix commit had to land",
+    "deploy-skipped@eeee00000001": "co-occurred with a real (+1) ci-failing key in the same window"
+  },
+  "anchorLabels": {
+    "ci-failing@aaaa00000001": 1,
+    "apphosting-gap@dddd00000001": -1
+  },
+  "corpus": {
+    "executionCount": 6,
+    "anchorCount": 2,
+    "anchorOverrides": 2,
+    "trainingKeys": [
+      "ci-failing@bbbb00000001",
+      "apphosting-gap@cccc00000001",
+      "ci-failing@eeee00000001",
+      "deploy-skipped@eeee00000001"
+    ],
+    "trainingCount": 4
+  }
+}

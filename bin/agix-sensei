@@ -1,0 +1,69 @@
+#!/usr/bin/env node
+// agix-sensei — backwards-compatible CLI shim.
+//
+// Logic lives at agents/sensei/agent.mjs. This shim forwards old CLI
+// invocations to the new runtime so any LaunchAgent plist still
+// pointing at `node bin/agix-sensei` continues to fire correctly until
+// the operator reloads launchd/io.agix.sensei.plist.
+//
+// Mode is positional (first arg). Subcommands (e.g. `session start
+// <name>`) follow as additional positionals. Flags work as before.
+//
+// New invocations should use:  node bin/agix agent run sensei <mode> [flags]
+
+import { runAgent } from '../lib/agix-runtime.mjs';
+
+const argv = process.argv.slice(2);
+
+if (argv.length === 0 || argv[0] === '-h' || argv[0] === '--help') {
+  showHelp();
+  process.exit(argv.length === 0 ? 64 : 0);
+}
+
+const opts = { _: [] };
+for (let i = 0; i < argv.length; i++) {
+  const a = argv[i];
+  switch (a) {
+    case '--send':     opts.send = true; break;
+    case '--dry-run':  opts.dryRun = true; break;
+    case '--instance': opts.instance = argv[++i]; break;
+    case '-h':
+    case '--help':     showHelp(); process.exit(0);
+    default:
+      if (a.startsWith('--')) {
+        // Unknown flag — pass through as-is for forward compat
+        const eq = a.indexOf('=');
+        if (eq !== -1) opts[a.slice(2, eq).replace(/-([a-z])/g, (_, c) => c.toUpperCase())] = a.slice(eq + 1);
+        else opts[a.slice(2).replace(/-([a-z])/g, (_, c) => c.toUpperCase())] = true;
+      } else {
+        opts._.push(a);
+      }
+  }
+}
+
+try {
+  await runAgent('sensei', opts);
+} catch (err) {
+  console.error('FATAL:', err.message);
+  if (process.env.DEBUG) console.error(err.stack);
+  process.exit(1);
+}
+
+function showHelp() {
+  console.log(`agix-sensei — Agix's strategic-mentor agent (shim)
+
+Usage:
+  agix-sensei brief [--send] [--dry-run]   Daily briefing (writes journal; --send emails)
+  agix-sensei chat                          Interactive strategic check-in REPL
+  agix-sensei plan                          Bounded plan session (foundational doc changes)
+  agix-sensei session start <name>          Mark a focused session beginning
+  agix-sensei session end                   Close the active session
+  agix-sensei session status                Show active session
+  agix-sensei goals                         Dump synthesized Goal Tree as JSON
+  agix-sensei --instance <name>             Select a non-default instance (default: agix)
+
+Equivalent: node bin/agix agent run sensei <mode> [flags]
+Implementation: agents/sensei/agent.mjs
+Spec:           architecture/03-ai-ml/agent-architecture/SENSEI_AGENT.md
+`);
+}

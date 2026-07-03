@@ -1,0 +1,40 @@
+{
+  "benchmark": "fanout-coordination-tax",
+  "date": "2026-06-18",
+  "what": "The SAME fan-out task (classify 5 short texts) run two ways: (A) one fresh subagent per item (Claude's default fan-out), (B) one consolidated context doing all 5. Measures the coordination tax = overhead re-paid per spawn. Turns the EFFICIENCY_BENCHMARK projection into a measurement.",
+  "method": "Agent-tool subagents; subagent_tokens read from each usage object. Hand-recorded from the harness.",
+  "effectiveness_note": "BOTH arms produced the IDENTICAL correct labels (positive, negative, neutral, positive, negative). Same effectiveness — the difference is purely cost.",
+  "arm_A_fanout_fresh_per_item": {
+    "samples": [
+      {"item": 1, "tokens": 75279, "label": "positive"},
+      {"item": 2, "tokens": 75235, "label": "negative"},
+      {"item": 3, "tokens": 75242, "label": "neutral"},
+      {"item": 4, "tokens": 75271, "label": "positive"},
+      {"item": 5, "tokens": 75235, "label": "negative"}
+    ],
+    "total_tokens": 376262,
+    "per_spawn_overhead_mean": 75252
+  },
+  "arm_B_consolidated_one_context": {
+    "tokens": 75350,
+    "labels": ["positive", "negative", "neutral", "positive", "negative"]
+  },
+  "result": {
+    "tokens_fanout": 376262,
+    "tokens_consolidated": 75350,
+    "tokens_saved": 300912,
+    "reduction_pct": 80.0,
+    "interpretation": "For N=5 trivial items, ~80% of the fan-out cost was re-paid fixed overhead (~75,252/spawn), NOT work. The work needs the overhead paid ONCE; fan-out pays it N times."
+  },
+  "projection_now_anchored": {
+    "formula": "fanout = N * 75252 ; consolidated/warm-worker = 75252 + work ; tax = (N-1) * 75252 for small items",
+    "N5_reduction_pct": 80.0, "N10_reduction_pct": 90.0, "N20_reduction_pct": 95.0,
+    "note": "Tax fraction = overhead/(overhead+work): HIGH when items are small/coordination-heavy, LOW when each item is large reasoning."
+  },
+  "honest_caveats": [
+    "Arm B (consolidated) is cheaper but SERIALIZES the work + shares one context (no isolation) + the context grows — the tradeoff fan-out exists to avoid.",
+    "The Agix BUS is the architecture that recovers fan-out's parallelism + isolation WITHOUT re-paying per-spawn overhead (warm parallel workers, 0-token dispatch). This run measures the TAX the bus targets; it does not measure a live bus-coordinated arm (no persistent workers / SendMessage available here).",
+    "Trivial items → ~100% of fan-out cost is overhead. Large-reasoning items shrink the tax fraction.",
+    "Same model in both arms → identical effectiveness (verified: identical labels). This is a COST result, not a quality result."
+  ]
+}

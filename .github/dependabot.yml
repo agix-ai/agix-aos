@@ -1,0 +1,90 @@
+# Dependabot config — Track A2 (dependency policy) per BUILD_FRAMEWORK.md.
+#
+# Why this exists: deploys to Firebase App Hosting validate the Next.js
+# version against the adapter's CVE list at build time. A floating
+# caret range can introduce a vulnerable version between PRs without
+# anyone seeing the change. The policy is: pin exactly, then let
+# Dependabot raise visible PRs on a weekly cadence so version moves
+# are deliberate, not stochastic.
+#
+# Scope: npm ecosystems in `apps/website`, every package under `packages/`,
+# plus the GitHub Actions ecosystem so workflow runners get bumped too.
+# Group minor + patch updates to reduce PR noise; majors get their own PR.
+
+version: 2
+
+updates:
+  # ─── App workspace (the only place Next/React live today) ───────
+  - package-ecosystem: npm
+    directory: "/apps/website"
+    schedule:
+      interval: weekly
+      day: monday
+      time: "06:00"
+      timezone: America/Denver
+    open-pull-requests-limit: 5
+    labels:
+      - dependencies
+      - dependency-pin-policy
+    commit-message:
+      prefix: "deps(website)"
+      include: scope
+    groups:
+      # One PR per week with every safe minor/patch bundled.
+      safe-bumps:
+        update-types:
+          - minor
+          - patch
+        # Exclude Next.js and React from grouping — these are the
+        # platform-validated pins; we want them visible on their own.
+        exclude-patterns:
+          - "next"
+          - "react"
+          - "react-dom"
+          - "@apphosting/*"
+          - "eslint-config-next"
+
+  # ─── Workspace packages ─────────────────────────────────────────
+  - package-ecosystem: npm
+    directory: "/packages/ui"
+    schedule: { interval: weekly, day: monday, time: "06:00", timezone: America/Denver }
+    open-pull-requests-limit: 3
+    labels: [dependencies, dependency-pin-policy]
+    commit-message: { prefix: "deps(ui)", include: scope }
+    groups:
+      safe-bumps: { update-types: [minor, patch] }
+
+  - package-ecosystem: npm
+    directory: "/packages/types"
+    schedule: { interval: weekly, day: monday, time: "06:00", timezone: America/Denver }
+    open-pull-requests-limit: 3
+    labels: [dependencies, dependency-pin-policy]
+    commit-message: { prefix: "deps(types)", include: scope }
+    groups:
+      safe-bumps: { update-types: [minor, patch] }
+
+  - package-ecosystem: npm
+    directory: "/packages/config"
+    schedule: { interval: weekly, day: monday, time: "06:00", timezone: America/Denver }
+    open-pull-requests-limit: 3
+    labels: [dependencies, dependency-pin-policy]
+    commit-message: { prefix: "deps(config)", include: scope }
+    groups:
+      safe-bumps: { update-types: [minor, patch] }
+
+  - package-ecosystem: npm
+    directory: "/packages/prompts"
+    schedule: { interval: weekly, day: monday, time: "06:00", timezone: America/Denver }
+    open-pull-requests-limit: 3
+    labels: [dependencies, dependency-pin-policy]
+    commit-message: { prefix: "deps(prompts)", include: scope }
+    groups:
+      safe-bumps: { update-types: [minor, patch] }
+
+  # ─── GitHub Actions runners ─────────────────────────────────────
+  - package-ecosystem: github-actions
+    directory: "/"
+    schedule: { interval: weekly, day: monday, time: "06:00", timezone: America/Denver }
+    open-pull-requests-limit: 2
+    labels: [dependencies, ci]
+    commit-message: { prefix: "ci(deps)", include: scope }

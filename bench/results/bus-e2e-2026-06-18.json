@@ -1,0 +1,22 @@
+{
+  "benchmark": "bus-e2e-coordination",
+  "date": "2026-06-18",
+  "what": "Live end-to-end measurement of the bus-runtime integration (PHASE_BUS_RUNTIME_1): the SAME work (5 context-warden smoke-runs) via fresh subprocess fan-out vs one warm bus worker. Turns the efficiency PROJECTION into a measured end-to-end number on the real Rust lewis-aos-bus daemon.",
+  "method": "node bench/bus-e2e/measure.mjs context-warden 5 — fresh arm = N `agix agent smoke` subprocess spawns; warm arm = one `agix agent serve` worker + N bus dispatches. Wall-clock from the harness.",
+  "agent": "context-warden",
+  "n": 5,
+  "fresh_spawn": { "processes": 5, "total_ms": 2651, "per_task_ms_mean": 530 },
+  "warm_worker": { "processes": 1, "startup_ms_once": 513, "dispatch_total_ms": 23, "per_task_ms_mean": 5 },
+  "result": {
+    "per_task_speedup": 106,
+    "coordination_overhead_removed_ms_per_task": 525,
+    "processes_fresh": 5, "processes_warm": 1,
+    "interpretation": "Fresh fan-out re-pays the full process+runtime+agent load (~530ms) PER task; the warm bus worker pays it ONCE (513ms) then serves each task in ~5ms (the bus hop + the smoke work). The AOS analog of the 75K-token per-spawn tax, now measured end-to-end over the real bus."
+  },
+  "honest_caveats": [
+    "Model-free (smoke op) → measures process/runtime SETUP overhead, NOT tokens. It is the AOS-runtime analog of the token tax, not the token tax itself.",
+    "Warm amortizes one 513ms startup over N tasks: no win at N=1; the win grows with N (the fan-out case). At N=5 the break-even is already passed (warm total 536ms vs fresh 2651ms).",
+    "Per-task warm (~5ms) still includes a fresh orchestrator bus connection per dispatch (the fanout primitive reconnects each call) — a connection-reuse optimization would lower it further toward the ~8.6us transport floor.",
+    "Single run, one machine. Re-run: node bench/bus-e2e/measure.mjs [agent] [N]."
+  ]
+}

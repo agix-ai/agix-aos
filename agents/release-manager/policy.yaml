@@ -1,0 +1,67 @@
+# release-manager — advisory policy (AGA.Soul.1 Layer 2).
+# Companion to the soul block in manifest.yaml. Declares WHAT this agent SHOULD
+# do (capabilities + boundaries it honors). v0.2 does NOT sandbox-enforce this at
+# runtime; runtime enforcement is on the roadmap (see SECURITY.md). Documented
+# intent, not a runtime guarantee.
+#
+# release-manager owns the release TRAIN (calendar, freeze, RC, PRR, rollout). It
+# touches the release surface (it reasons about launches), so the bash
+# deny_patterns forbid every direct-deploy path. The human-gated action (launch
+# go/no-go, G3) requires escalation — the gate routes it to HOLD.
+agent: release-manager
+trust_level: proposer
+
+filesystem:
+  # Reads the version/changelog, tester + release-engineer reports, workflow
+  # files, and its own prior release records for delta context.
+  read:
+    - 'package.json'
+    - 'CHANGELOG.md'
+    - '.github/workflows/'
+    - 'wiki/tester/'
+    - 'wiki/release-engineer/'
+    - 'wiki/release-manager/'
+    - 'agents/release-manager/'
+    - 'architecture/'
+  # Proposer trust: writes ONLY its own report surface.
+  write:
+    - 'wiki/release-manager/'
+  # Hard deny: a release gate must never mutate the deploy pipeline it governs,
+  # nor any source/deploy surface.
+  deny:
+    - '.github/workflows/'
+    - 'services/'
+    - 'apps/'
+    - 'lib/'
+    - 'bin/'
+
+tools:
+  allow: [Read, Grep, Glob, Write]
+
+bash:
+  # A proposer never deploys, never merges, never force-pushes. Advisory in v0.2
+  # (documented intent, not sandbox-enforced at runtime). The deploy patterns are
+  # load-bearing for THIS agent (it touches the release surface).
+  deny_patterns:
+    - 'gcloud .*deploy'
+    - 'gcloud run deploy'
+    - 'gcloud builds submit'
+    - 'firebase deploy'
+    - 'firebase .*deploy'
+    - 'git push.*--force'
+    - 'git push'
+    - 'gh pr merge'
+    - 'gh release create'
+    - '(>|>>|tee|sed -i|perl -i).*\.github/workflows/.*\.ya?ml'
+    - 'gh workflow (enable|disable|run)'
+
+inference:
+  # A standalone release-train gate — it verifies + proposes; it does not fan out.
+  can_delegate_to: []
+  max_tool_calls: 80
+
+# The human co-sign points this agent routes to a person (verdict HOLD):
+escalations:
+  - 'Launch go/no-go (G3) — a complete PRR checklist routes to a human co-sign.'
+  - 'A rollout outside the canary/bake/abort envelope (G4).'
+  - 'The emergency-release path (out of band with the calendar).'

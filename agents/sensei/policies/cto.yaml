@@ -1,0 +1,49 @@
+# Sensei CTO-mode permission policy.
+#
+# Spec: wiki/concepts/sensei-role-tracks.md § Permission policy schema
+# Loaded by: agents/sensei/lib/role.mjs → loadRolePolicy('cto')
+# Enforced at three checkpoints in agents/sensei/agent.mjs:
+#   1. session start          → assertOperatorAllowed
+#   2. plan-mode edit proposal → assertEditPathAllowed
+#   3. pre-/fire               → assertFireAllowed (intersection with manifest)
+# Git operations gated by assertGitOperationAllowed before any spawnSync.
+
+role: cto
+display_name: "CTO mode"
+
+# Basic/solo tier: '*' allows ANY operator identity (including a solo user with
+# no git config) so the public pack works turnkey. Enterprise deployments pin
+# specific emails here instead (e.g. - cto@example.com) to lock the identity gate.
+operators_allowed:
+  - "*"
+
+# Composes with agents/sensei/manifest.yaml `defaults.fire_allowlist`.
+# The intersection wins — this can narrow, never widen, the manifest list.
+fire_allowlist:
+  - research
+  - architect
+  - onboarding
+  - director
+
+# Glob patterns. Trailing slash = directory prefix. `*` matches one path
+# segment; `**` matches any number. Implementation in role.mjs.
+edit_paths:
+  - "wiki/"
+  - "architecture/"
+  - "wiki/director/specs/"
+  - "agents/"
+  - "clients/"             # Compartmentalized per-client scopes (see clients/<slug>/README.md)
+  - "docs/framework/"      # BUILD_FRAMEWORK status updates
+  - "docs/handoffs/"       # Session handoff records
+
+git:
+  commit:
+    allowed: true
+    require_confirm: true
+  push:
+    allowed: false
+  branch_create:
+    allowed: true
+
+session_log:
+  role_field_required: true

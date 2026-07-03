@@ -1,0 +1,63 @@
+name: onboarding
+display_name: Agix Onboarding Agent
+description: Reads a codebase (read-only), produces a baseline source map and a foundation-plan spec, and scores AI-readiness on the 12-dimension scorecard. A good first agent to point at a new project to get oriented.
+
+# Distribution tier (Phase B). basic = free public pack · pro = paid · enterprise = private.
+tier: basic
+
+runtime:
+  language: nodejs
+  node_version: '>=20'
+  memory_mb: 1024
+  timeout_sec: 1800
+
+# Onboarding has no Workspace API surface — annotates local repo files only.
+# Reads from .client-repos/ (gitignored) and writes to wiki/sources/ +
+# wiki/director/specs/. Optional email digest on `--send`.
+auth: null
+
+# No recurring schedule — onboarding is a one-off event, fired manually when
+# you point it at a new project (and again to re-check after major fixes land).
+schedule: []
+timezone: '${tenant.timezone}'
+
+outputs:
+  - kind: file
+    path: wiki/sources/{{date}}-{{client_slug}}-baseline.md
+  - kind: file
+    path: wiki/director/specs/{{date}}-{{client_slug}}-foundation-plan.md
+  - kind: file
+    path: wiki/log.md
+    mode: append
+  - kind: state
+    name: runs
+    schema: 'json files under ~/.cache/agix-onboarding/runs/'
+  - kind: state
+    name: cursors
+    schema: 'json files under ~/.cache/agix-onboarding/cursors/{client_slug}.json (last audited commit per repo)'
+  - kind: email
+    template: onboarding-digest
+    to: '${tenant.operator_email}'
+    optional: true               # only when invoked with --send
+
+config:
+  - ANTHROPIC_API_KEY: required
+  - SMTP_APP_PASSWORD: optional   # only required if --send is used
+
+defaults:
+  # Code-read + summarize across many files; cost-aware.
+  scan_model: claude-haiku-4-5
+  # Per-file finding synthesis with citation discipline.
+  synth_model: claude-sonnet-4-6
+  # Severity + AI-readiness judgment.
+  judge_model: claude-opus-4-7
+  # Read budgets (per-run hard caps).
+  max_files: 500
+  max_file_bytes: 5242880          # 5 MB
+  max_total_bytes: 52428800        # 50 MB
+  # Cost budget (Anthropic tokens, soft cap with alarm).
+  max_tokens: 250000
+  fetch_concurrency: 4
+  default_depth: full              # `full` reads every source file; `sample` reads top-N most-recently-changed
+  # Cloned repo root; gitignored. Same convention as a prior client audit.
+  client_repos_dir: .client-repos

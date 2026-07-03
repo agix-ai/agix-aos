@@ -1,0 +1,112 @@
+<!--
+  Agix agent-briefing email template — Sumi & Kin letter style.
+
+  Used by the Research Agent (bin/agix-research-and-mail) and, in Phase 2,
+  by the Secretary Agent's daily briefing. Designed as personal
+  correspondence, not a marketing card — warm washi cream, sumi navy
+  text, a single kin gold hairline divider, generous breathing room,
+  Cormorant italic accents on the salutation and sign-off.
+
+  This template is intentionally separate from the default agix-send
+  signature: pass --html --no-signature when emailing this through
+  bin/agix-send so the template's chrome wins.
+
+  Placeholders (the wrapper script substitutes these):
+    {{salutation}}    e.g. "Good morning, there."
+    {{date_line}}     e.g. "Friday · May 16, 2026"
+    {{eyebrow}}       small caps section above the salutation, e.g. "Research Brief"
+    {{body_html}}     the rendered body — Markdown → HTML, headings preserved
+    {{closing}}       e.g. "— Your Secretary"
+    {{footer_note}}   small italic line at the bottom, e.g. "Filed: wiki/research/2026-05-16-brief.md"
+-->
+<table role="presentation" cellpadding="0" cellspacing="0" border="0" width="100%" style="background-color:#F3EEE4; margin:0; padding:24px 12px;">
+  <tr>
+    <td align="center">
+      <table role="presentation" cellpadding="0" cellspacing="0" border="0" width="100%" style="max-width:640px; background-color:#F3EEE4; margin:0 auto;">
+
+        <!-- Eyebrow + Agix mark -->
+        <tr>
+          <td style="padding:12px 32px 0 32px;">
+            <p style="margin:0; color:#6B7691; font-family:'Geist Mono', ui-monospace, 'SF Mono', Menlo, monospace; font-size:11px; letter-spacing:0.18em; text-transform:uppercase;">
+              {{eyebrow}}
+            </p>
+          </td>
+        </tr>
+
+        <!-- Salutation (Cormorant italic) -->
+        <tr>
+          <td style="padding:8px 32px 0 32px;">
+            <p style="margin:0; color:#14213D; font-family:'Cormorant Garamond', 'Georgia', 'Times New Roman', serif; font-style:italic; font-weight:400; font-size:28px; line-height:1.25; letter-spacing:-0.005em;">
+              {{salutation}}
+            </p>
+          </td>
+        </tr>
+
+        <!-- Date line -->
+        <tr>
+          <td style="padding:6px 32px 0 32px;">
+            <p style="margin:0; color:#6B7691; font-family:'Geist Mono', ui-monospace, 'SF Mono', Menlo, monospace; font-size:12px; letter-spacing:0.06em;">
+              {{date_line}}
+            </p>
+          </td>
+        </tr>
+
+        <!-- Kin gold hairline -->
+        <tr>
+          <td style="padding:18px 32px 22px 32px;">
+            <table role="presentation" cellpadding="0" cellspacing="0" border="0" width="100%">
+              <tr><td style="border-top:1px solid #B08840; line-height:1; font-size:1px;">&nbsp;</td></tr>
+            </table>
+          </td>
+        </tr>
+
+        <!-- Body (Markdown rendered with inline styles by briefingRenderer) -->
+        <tr>
+          <td style="padding:0 32px;">
+            {{body_html}}
+          </td>
+        </tr>
+
+        <!-- Closing (Cormorant italic, ranged right) -->
+        <tr>
+          <td style="padding:36px 32px 0 32px;" align="left">
+            <p style="margin:0; color:#14213D; font-family:'Cormorant Garamond', 'Georgia', 'Times New Roman', serif; font-style:italic; font-size:20px; line-height:1.3;">
+              {{closing}}
+            </p>
+          </td>
+        </tr>
+
+        <!-- Footer note (small, muted, italic) -->
+        <tr>
+          <td style="padding:18px 32px 28px 32px;">
+            <p style="margin:0; color:#6B7691; font-family:'Georgia', 'Times New Roman', serif; font-style:italic; font-size:12px; line-height:1.5;">
+              {{footer_note}}
+            </p>
+          </td>
+        </tr>
+
+        <!-- Agix watermark (small mark + example.com) -->
+        <tr>
+          <td style="padding:8px 32px 24px 32px; border-top:1px solid rgba(20,33,61,0.10);">
+            <table role="presentation" cellpadding="0" cellspacing="0" border="0" width="100%">
+              <tr>
+                <td align="left" style="color:#6B7691; font-family:'Geist Mono', ui-monospace, 'SF Mono', Menlo, monospace; font-size:10px; letter-spacing:0.14em; text-transform:uppercase;">
+                  Agix · example.com
+                </td>
+                <td align="right" style="color:#6B7691; font-family:'Geist Mono', ui-monospace, 'SF Mono', Menlo, monospace; font-size:10px; letter-spacing:0.14em; text-transform:uppercase;">
+                  Internal correspondence
+                </td>
+              </tr>
+            </table>
+          </td>
+        </tr>
+
+      </table>
+    </td>
+  </tr>
+</table>
+
+<!-- Body styling is inline-only — applied per element in bin/agix-research-and-mail's
+     briefingRenderer. Email clients (Gmail Mobile especially) strip <style>
+     blocks, so any rule defined here would silently break on mobile. -->
+

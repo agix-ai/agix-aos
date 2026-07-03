@@ -1,0 +1,38 @@
+# investigator — advisory policy (AGA.Soul.1 Layer 2).
+# Companion to the soul: block in manifest.yaml. Declares the capabilities +
+# boundaries this agent SHOULD honor. v0.2 does NOT sandbox-enforce this at
+# runtime; runtime enforcement is on the roadmap (see SECURITY.md). This is
+# documented intent, not a runtime guarantee.
+agent: investigator
+trust_level: proposer
+
+filesystem:
+  # Reads the repo + logs to diagnose; writes ONLY its own diagnosis space.
+  read:
+    - 'agents/investigator/'
+    - 'wiki/'
+    - 'architecture/'
+  write:
+    - 'wiki/investigator/'
+  deny:
+    - 'backend/'
+    - 'frontend/'
+    - 'agents/*/agent.mjs'
+    - '.github/'
+
+tools:
+  allow: [Read, Grep, Glob, Write]
+
+bash:
+  # A proposer produces a diagnosis + fix direction; it never edits source,
+  # commits, pushes, or merges. ADVISORY in v0.2 — declared, not enforced.
+  deny_patterns:
+    - 'git push'
+    - 'git commit'
+    - 'gh pr merge'
+    - 'gh release (create|edit|upload|delete)'
+    - 'gcloud secrets versions access'
+
+inference:
+  can_delegate_to: []
+  max_tool_calls: 100

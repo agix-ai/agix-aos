@@ -1,0 +1,122 @@
+# Research Agent — Source Registry (Phase 1 seed)
+#
+# Curated source list scanned weekly by `bin/agix-research`.
+# Each source is fetched, extracted by Haiku, scored 0-5 by relevance rubric,
+# and entries scoring >=3 enter the synthesis pool for the Sunday brief.
+#
+# Spec: architecture/03-ai-ml/agent-architecture/RESEARCH_AGENT.md
+#
+# kind: rss | html | arxiv-query
+# priority: 1-5 (5 = always read first, 1 = only if quota allows)
+# Add a source by appending an entry below. PRs welcome.
+
+sources:
+
+  # ── Foundation labs (Tier 1: read first, always) ─────────────────────
+  - name: Anthropic Engineering
+    url: https://www.anthropic.com/engineering
+    kind: html
+    priority: 5
+    notes: First-party engineering posts on Skills, agent SDK, multi-agent research, context engineering.
+
+  - name: Anthropic Research
+    url: https://www.anthropic.com/research
+    kind: html
+    priority: 5
+    notes: Capability + alignment research from Anthropic.
+
+  - name: DeepMind Safety + Alignment
+    url: https://deepmind.google/discover/blog/
+    kind: html
+    priority: 4
+    notes: Filter for safety/alignment/agent posts.
+
+  - name: OpenAI Research
+    url: https://openai.com/research/
+    kind: html
+    priority: 4
+    notes: Agent + tool-use research, safety frameworks.
+
+  # ── Independent researchers / commentators (Tier 1) ──────────────────
+  - name: Simon Willison's Weblog
+    url: https://simonwillison.net/
+    kind: rss
+    priority: 5
+    notes: High signal-to-noise on prompt injection, agent failures, model releases.
+
+  - name: Lee Hanchung — Hidden Technical Debt
+    url: https://leehanchung.github.io/blogs/
+    kind: rss
+    priority: 4
+    notes: Production agent runtime essays. Source for "Hidden Technical Debt of Agent Runtime."
+
+  # ── arXiv keyword scans (Tier 1) ─────────────────────────────────────
+  - name: arXiv cs.AI agent papers
+    url: https://arxiv.org/list/cs.AI/recent
+    kind: arxiv-query
+    priority: 5
+    notes: |
+      Keyword filter: "agent", "tool use", "skill library", "process reward",
+      "self-improve", "reflection", "memory", "trajectory", "verifier".
+      Last 7 days only.
+
+  - name: arXiv cs.LG agent learning papers
+    url: https://arxiv.org/list/cs.LG/recent
+    kind: arxiv-query
+    priority: 4
+    notes: |
+      Keyword filter: same as cs.AI plus "RL from execution", "PRM",
+      "trajectory distillation", "online learning".
+
+  # ── Frameworks + stateful agents (Tier 2) ────────────────────────────
+  - name: Letta Blog
+    url: https://www.letta.com/blog
+    kind: html
+    priority: 4
+    notes: MemGPT continuation. Three-tier memory (Core/Recall/Archival) reference impl.
+
+  - name: LangGraph Releases
+    url: https://github.com/langchain-ai/langgraph/releases
+    kind: html
+    priority: 3
+    notes: State machines + checkpoints. Track API drift.
+
+  - name: smolagents Releases
+    url: https://github.com/huggingface/smolagents/releases
+    kind: html
+    priority: 3
+    notes: Code-action agents + local-model story.
+
+  - name: Together AI Blog
+    url: https://www.together.ai/blog
+    kind: html
+    priority: 3
+    notes: DeepSWE + open-source trajectory-RL releases.
+
+  # ── Production / Ops perspective (Tier 2) ────────────────────────────
+  - name: ZenML Blog
+    url: https://www.zenml.io/blog
+    kind: html
+    priority: 4
+    notes: LLMOps + production failure post-mortems. Source for the 1,200-deployment review.
+
+  - name: AWS Bedrock + AgentCore
+    url: https://aws.amazon.com/blogs/machine-learning/
+    kind: html
+    priority: 3
+    notes: Filter for "AgentCore", "Bedrock Agents", "Episodic Memory".
+
+  # ── Security (Tier 2) ────────────────────────────────────────────────
+  - name: Michael Bargury — Agent Security
+    url: https://www.mbgsec.com/weblog/
+    kind: html
+    priority: 4
+    notes: Source for Meta's "Agents Rule of Two." Adversarial agent research.
+
+  - name: Oso — AI Agent Security
+    url: https://www.osohq.com/learn/
+    kind: html
+    priority: 3
+    notes: Lethal trifecta + authorization patterns for agents.
+
+  # ── Add new sources below this line ──────────────────────────────────

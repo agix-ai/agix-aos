@@ -1,0 +1,168 @@
+{
+  "_comment": "Canonical deploy-health history fixture for G10. Six gradable finding episodes, time-ordered. Keys are pre-stamped exactly as lib/agix-stv-deploy-health.mjs findingKey() would produce. Expected execution labels live in expected-labels.json.",
+  "snapshots": [
+    {
+      "schema": "agix.deploy-health.snapshot.v1",
+      "runId": "run-a1",
+      "capturedAt": "2026-05-20T00:00:00.000Z",
+      "headSha": "aaaa00000001",
+      "findings": [
+        { "severity": "warn", "category": "ci-failing", "message": "2 consecutive CI failures on `main`", "key": "ci-failing@aaaa00000001" }
+      ],
+      "ci": { "runs": [
+        { "workflowName": "CI", "conclusion": "failure", "headSha": "aaaa00000001" },
+        { "workflowName": "CI", "conclusion": "failure", "headSha": "aaaa00000001" }
+      ] },
+      "appHosting": { "gap": 0, "latestSucceededSha": "aaaa00000001", "latestRolloutState": "SUCCEEDED" }
+    },
+    {
+      "schema": "agix.deploy-health.snapshot.v1",
+      "runId": "run-a2",
+      "capturedAt": "2026-05-20T06:00:00.000Z",
+      "headSha": "aaaa00000001",
+      "findings": [
+        { "severity": "critical", "category": "ci-failing", "message": "3 consecutive CI failures on `main`", "key": "ci-failing@aaaa00000001" }
+      ],
+      "ci": { "runs": [
+        { "workflowName": "CI", "conclusion": "failure", "headSha": "aaaa00000001" },
+        { "workflowName": "CI", "conclusion": "failure", "headSha": "aaaa00000001" },
+        { "workflowName": "CI", "conclusion": "failure", "headSha": "aaaa00000001" }
+      ] },
+      "appHosting": { "gap": 0, "latestSucceededSha": "aaaa00000001", "latestRolloutState": "SUCCEEDED" }
+    },
+    {
+      "schema": "agix.deploy-health.snapshot.v1",
+      "runId": "run-a3",
+      "capturedAt": "2026-05-20T12:00:00.000Z",
+      "headSha": "aaaa00000002",
+      "findings": [],
+      "ci": { "runs": [
+        { "workflowName": "CI", "conclusion": "success", "headSha": "aaaa00000002" }
+      ] },
+      "appHosting": { "gap": 0, "latestSucceededSha": "aaaa00000002", "latestRolloutState": "SUCCEEDED" }
+    },
+
+    {
+      "schema": "agix.deploy-health.snapshot.v1",
+      "runId": "run-b1",
+      "capturedAt": "2026-05-21T00:00:00.000Z",
+      "headSha": "bbbb00000001",
+      "findings": [
+        { "severity": "warn", "category": "ci-failing", "message": "2 consecutive CI failures on `main`", "key": "ci-failing@bbbb00000001" }
+      ],
+      "ci": { "runs": [
+        { "workflowName": "CI", "conclusion": "failure", "headSha": "bbbb00000001" },
+        { "workflowName": "CI", "conclusion": "failure", "headSha": "bbbb00000001" }
+      ] },
+      "appHosting": { "gap": 0, "latestSucceededSha": "bbbb00000001", "latestRolloutState": "SUCCEEDED" }
+    },
+    {
+      "schema": "agix.deploy-health.snapshot.v1",
+      "runId": "run-b2",
+      "capturedAt": "2026-05-21T06:00:00.000Z",
+      "headSha": "bbbb00000001",
+      "findings": [],
+      "ci": { "runs": [
+        { "workflowName": "CI", "conclusion": "success", "headSha": "bbbb00000001" }
+      ] },
+      "appHosting": { "gap": 0, "latestSucceededSha": "bbbb00000001", "latestRolloutState": "SUCCEEDED" }
+    },
+
+    {
+      "schema": "agix.deploy-health.snapshot.v1",
+      "runId": "run-c1",
+      "capturedAt": "2026-05-22T00:00:00.000Z",
+      "headSha": "cccc00000001",
+      "findings": [
+        { "severity": "critical", "category": "apphosting-gap", "message": "Firebase App Hosting rollout is 3 commits behind HEAD", "key": "apphosting-gap@cccc00000001" }
+      ],
+      "ci": { "runs": [ { "workflowName": "CI", "conclusion": "success", "headSha": "cccc00000001" } ] },
+      "appHosting": { "gap": 3, "latestSucceededSha": "cccc00000000", "latestRolloutState": "SUCCEEDED" }
+    },
+    {
+      "schema": "agix.deploy-health.snapshot.v1",
+      "runId": "run-c2",
+      "capturedAt": "2026-05-22T06:00:00.000Z",
+      "headSha": "cccc00000001",
+      "findings": [
+        { "severity": "critical", "category": "apphosting-gap", "message": "Firebase App Hosting rollout is 3 commits behind HEAD", "key": "apphosting-gap@cccc00000001" }
+      ],
+      "ci": { "runs": [ { "workflowName": "CI", "conclusion": "success", "headSha": "cccc00000001" } ] },
+      "appHosting": { "gap": 3, "latestSucceededSha": "cccc00000000", "latestRolloutState": "SUCCEEDED" }
+    },
+    {
+      "schema": "agix.deploy-health.snapshot.v1",
+      "runId": "run-c3",
+      "capturedAt": "2026-05-22T12:00:00.000Z",
+      "headSha": "cccc00000001",
+      "findings": [],
+      "ci": { "runs": [ { "workflowName": "CI", "conclusion": "success", "headSha": "cccc00000001" } ] },
+      "appHosting": { "gap": 0, "latestSucceededSha": "cccc00000001", "latestRolloutState": "SUCCEEDED" }
+    },
+
+    {
+      "schema": "agix.deploy-health.snapshot.v1",
+      "runId": "run-d1",
+      "capturedAt": "2026-05-23T00:00:00.000Z",
+      "headSha": "dddd00000001",
+      "findings": [
+        { "severity": "critical", "category": "apphosting-gap", "message": "Firebase App Hosting rollout is 2 commits behind HEAD", "key": "apphosting-gap@dddd00000001" }
+      ],
+      "ci": { "runs": [ { "workflowName": "CI", "conclusion": "success", "headSha": "dddd00000001" } ] },
+      "appHosting": { "gap": 2, "latestSucceededSha": "dddd00000000", "latestRolloutState": "SUCCEEDED" }
+    },
+    {
+      "schema": "agix.deploy-health.snapshot.v1",
+      "runId": "run-d2",
+      "capturedAt": "2026-05-23T06:00:00.000Z",
+      "headSha": "dddd00000001",
+      "findings": [],
+      "ci": { "runs": [ { "workflowName": "CI", "conclusion": "success", "headSha": "dddd00000001" } ] },
+      "appHosting": { "gap": 0, "latestSucceededSha": "dddd00000001", "latestRolloutState": "SUCCEEDED" }
+    },
+
+    {
+      "schema": "agix.deploy-health.snapshot.v1",
+      "runId": "run-e1",
+      "capturedAt": "2026-05-24T00:00:00.000Z",
+      "headSha": "eeee00000001",
+      "findings": [
+        { "severity": "warn", "category": "ci-failing", "message": "2 consecutive CI failures on `main`", "key": "ci-failing@eeee00000001" },
+        { "severity": "warn", "category": "deploy-skipped", "message": "3 backend deploys skipped recently (likely CI gating)", "key": "deploy-skipped@eeee00000001" }
+      ],
+      "ci": { "runs": [
+        { "workflowName": "CI", "conclusion": "failure", "headSha": "eeee00000001" },
+        { "workflowName": "CI", "conclusion": "failure", "headSha": "eeee00000001" },
+        { "workflowName": "Deploy Backend", "conclusion": "skipped", "headSha": "eeee00000001" },
+        { "workflowName": "Deploy Backend", "conclusion": "skipped", "headSha": "eeee00000001" },
+        { "workflowName": "Deploy Backend", "conclusion": "skipped", "headSha": "eeee00000001" }
+      ] },
+      "appHosting": { "gap": 0, "latestSucceededSha": "eeee00000001", "latestRolloutState": "SUCCEEDED" }
+    },
+    {
+      "schema": "agix.deploy-health.snapshot.v1",
+      "runId": "run-e2",
+      "capturedAt": "2026-05-24T06:00:00.000Z",
+      "headSha": "eeee00000001",
+      "findings": [
+        { "severity": "critical", "category": "ci-failing", "message": "3 consecutive CI failures on `main`", "key": "ci-failing@eeee00000001" },
+        { "severity": "warn", "category": "deploy-skipped", "message": "4 backend deploys skipped recently (likely CI gating)", "key": "deploy-skipped@eeee00000001" }
+      ],
+      "ci": { "runs": [
+        { "workflowName": "CI", "conclusion": "failure", "headSha": "eeee00000001" },
+        { "workflowName": "CI", "conclusion": "failure", "headSha": "eeee00000001" },
+        { "workflowName": "CI", "conclusion": "failure", "headSha": "eeee00000001" }
+      ] },
+      "appHosting": { "gap": 0, "latestSucceededSha": "eeee00000001", "latestRolloutState": "SUCCEEDED" }
+    },
+    {
+      "schema": "agix.deploy-health.snapshot.v1",
+      "runId": "run-e3",
+      "capturedAt": "2026-05-24T12:00:00.000Z",
+      "headSha": "eeee00000002",
+      "findings": [],
+      "ci": { "runs": [ { "workflowName": "CI", "conclusion": "success", "headSha": "eeee00000002" } ] },
+      "appHosting": { "gap": 0, "latestSucceededSha": "eeee00000002", "latestRolloutState": "SUCCEEDED" }
+    }
+  ]
+}

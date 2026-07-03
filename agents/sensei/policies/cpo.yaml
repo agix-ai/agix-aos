@@ -1,0 +1,35 @@
+# Sensei CPO-mode permission policy.
+#
+# Spec: wiki/concepts/sensei-role-tracks.md § Permission policy schema
+# See cto.yaml for full doc of enforcement points.
+
+role: cpo
+display_name: "CPO mode"
+
+# Source: clients/<your-client>/governance/ROLE_ASSIGNMENTS.md §2
+operators_allowed:
+  - cofounder@example.com    # <CLIENT> CPO; placeholder until D-4 confirms
+
+fire_allowlist:
+  - research
+  - curator
+
+edit_paths:
+  - "wiki/concepts/"
+  - "wiki/queries/"
+  - "clients/*/CLIENT_BRIEF.md"
+  - "clients/*/wiki/concepts/"
+  - "clients/*/wiki/research/"        # CPO can author product-research briefs in client scope
+  - "clients/*/PRODUCT_*.md"          # Future per-client product specs
+
+git:
+  commit:
+    allowed: true
+    require_confirm: true
+  push:
+    allowed: false
+  branch_create:
+    allowed: true
+
+session_log:
+  role_field_required: true
