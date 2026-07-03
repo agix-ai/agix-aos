@@ -4,7 +4,7 @@ An operating system for a team of AI agents you own. Scale your AI organically.
 
 [![Website](https://img.shields.io/badge/website-agix--ai.io-1f2937)](https://agix-ai.io)
 [![License](https://img.shields.io/badge/license-Apache--2.0-3b82f6)](LICENSE)
-[![Homebrew tap](https://img.shields.io/badge/homebrew-blewis--maker%2Fagix-8b5e34)](https://github.com/blewis-maker/homebrew-agix)
+[![Homebrew tap](https://img.shields.io/badge/homebrew-agix--ai%2Fagix-8b5e34)](https://github.com/agix-ai/homebrew-agix)
 
 ![Platform: macOS](https://img.shields.io/badge/platform-macOS-6b7280)
 ![Node 20+](https://img.shields.io/badge/node-%E2%89%A520-4b5563)
@@ -31,8 +31,8 @@ per token beyond your existing plan.
 Agix AOS installs from a Homebrew tap. A third-party tap requires a one-time `brew trust`.
 
 ```sh
-brew tap blewis-maker/agix
-brew trust blewis-maker/agix      # one-time — Homebrew requires trust for third-party taps
+brew tap agix-ai/agix
+brew trust agix-ai/agix      # one-time — Homebrew requires trust for third-party taps
 brew install agix-aos
 ```
 
@@ -135,7 +135,7 @@ not the agent, decides where it executes.
 
 > [!NOTE]
 > **Install only from the official tap.** The only supported install path is
-> `brew tap blewis-maker/agix` → `brew install agix-aos`. Don't install Agix from
+> `brew tap agix-ai/agix` → `brew install agix-aos`. Don't install Agix from
 > a fork or mirror you don't trust.
 >
 > **Agents act on your machine.** Agix is agentic software with real capabilities — its
