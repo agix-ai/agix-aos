@@ -4,6 +4,13 @@ Thanks for helping build Agix AOS. This guide covers dev setup, how agents are
 structured, how to add one with an eval, and the public-clean gate every public-bound
 change must pass.
 
+By participating, you agree to our [Code of Conduct](CODE_OF_CONDUCT.md). AI-agent-authored
+contributions are welcome — see [`AI_POLICY.md`](AI_POLICY.md).
+
+**Good first PR?** A new agent is the cleanest place to start: scaffold one with
+`agix agent new <name>`, give it a real job and one eval suite, and open a PR. It exercises
+the whole contribution path (agent structure → eval → public-clean gate) end to end.
+
 ## Dev setup
 
 The `agix` CLI + agent runtime is Node.js and runs straight from a checkout — no build
@@ -95,10 +102,24 @@ staged tree and aborts on any finding. If you hit a genuine false positive, allo
 inline with a `# public-clean: ok <reason>` comment on the same line — never by loosening
 the gate.
 
+## Sign your commits (DCO)
+
+Agix AOS uses the [Developer Certificate of Origin](https://developercertificate.org/).
+By contributing, you certify that you wrote the change (or have the right to submit it)
+under the project's license. Sign each commit:
+
+```sh
+git commit -s        # appends a "Signed-off-by: Your Name <you@example.com>" trailer
+```
+
+Every commit in a PR must carry a `Signed-off-by` trailer. This is separate from the
+`Co-Authored-By` provenance trailer that [`AI_POLICY.md`](AI_POLICY.md) asks for on
+agent-authored work — a PR can (and often should) carry both.
+
 ## Pull requests
 
 - Branch with a descriptive slug (`docs/...`, `feat/...`, `fix/...`).
 - Keep PRs scoped; stage only the files your change intends to touch.
+- Sign every commit (`git commit -s`) — the DCO check requires it.
 - Make sure `agix agent eval --all` is green and the public-clean gate passes on anything
   public-bound.
-- For release mechanics, see [`docs/operations/publish-release.md`](docs/operations/publish-release.md).

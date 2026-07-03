@@ -67,10 +67,22 @@ Treat it accordingly:
 Please report security issues **privately** — do not open a public issue for a
 vulnerability.
 
-- **Open a private security advisory via GitHub** on this repository:
+- **Use GitHub Private Vulnerability Reporting** on this repository:
   **Security → Advisories → Report a vulnerability → Open a draft advisory**. This routes
   the report to the maintainers privately and is the preferred channel.
 
-Please include a description, reproduction steps, and impact. We'll acknowledge receipt
-and coordinate a fix and disclosure timeline with you. Do not include real secrets,
+Please include a description, reproduction steps, and impact. Do not include real secrets,
 customer data, or production credentials in a report.
+
+## Coordinated disclosure
+
+We follow coordinated disclosure. When you report a vulnerability:
+
+- We aim to **acknowledge receipt within 72 hours** and give an initial assessment
+  shortly after.
+- We'll work with you on a fix and agree on a disclosure timeline. Our default is a
+  **90-day coordinated-disclosure window** from the report date — we aim to ship a fix
+  and publish an advisory within that window, and we may disclose sooner once a fix is
+  available.
+- We'll credit reporters who want credit in the published advisory. Please give us a
+  reasonable chance to remediate before any public disclosure.
