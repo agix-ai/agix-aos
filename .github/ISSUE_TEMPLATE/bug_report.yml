@@ -1,0 +1,72 @@
+name: Bug report
+description: Something in Agix AOS isn't working as expected
+labels: ["bug"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for the report. Please don't file security vulnerabilities here —
+        use **Security → Report a vulnerability** instead (see SECURITY.md).
+  - type: textarea
+    id: what-happened
+    attributes:
+      label: What happened?
+      description: What went wrong, and what did you expect instead?
+      placeholder: Running `agix ...` did X, but I expected Y.
+    validations:
+      required: true
+  - type: textarea
+    id: repro
+    attributes:
+      label: Steps to reproduce
+      description: The exact commands (and any relevant output) to reproduce it.
+      placeholder: |
+        1. brew install agix-aos
+        2. agix ...
+        3. ...
+      render: shell
+    validations:
+      required: true
+  - type: input
+    id: agent
+    attributes:
+      label: Which agent?
+      description: The agent involved, if any (e.g. sensei, research). Leave blank if it's the CLI itself.
+      placeholder: sensei
+    validations:
+      required: false
+  - type: dropdown
+    id: trust
+    attributes:
+      label: Agent trust level
+      description: The trust level of the agent involved, if relevant.
+      options:
+        - "Not applicable / CLI itself"
+        - observer
+        - proposer
+        - executor
+    validations:
+      required: false
+  - type: input
+    id: os
+    attributes:
+      label: Operating system
+      description: OS and version (e.g. macOS 15.5 arm64, Ubuntu 24.04).
+      placeholder: macOS 15.5 (Apple Silicon)
+    validations:
+      required: true
+  - type: input
+    id: version
+    attributes:
+      label: agix version
+      description: Output of `agix --version`.
+      placeholder: 0.2.2
+    validations:
+      required: true
+  - type: textarea
+    id: logs
+    attributes:
+      label: Logs or additional context
+      description: Any relevant logs, screenshots, or context. Redact secrets first.
+    validations:
+      required: false
