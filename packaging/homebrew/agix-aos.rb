@@ -44,6 +44,9 @@ class AgixAos < Formula
 
   def caveats
     <<~EOS
+      ★  Agix AOS v1 is in BETA — early and actively evolving. Expect rough edges and
+         breaking changes between releases; feedback and issues are very welcome.
+
       Agix AOS runs autonomous AI agents that act on your machine — they can read
       and write files and run commands. Review agents before running them; agents
       marked "executor" have the most capability.

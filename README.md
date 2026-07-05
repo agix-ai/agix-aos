@@ -2,6 +2,8 @@
 
 An operating system for a team of AI agents you own. Scale your AI organically.
 
+> ⚠️ **Agix AOS v1 is in beta.** It's early and actively evolving — expect rough edges and breaking changes between releases. [Issues and feedback](../../issues) are very welcome.
+
 [![Website](https://img.shields.io/badge/website-agix--ai.io-1f2937)](https://agix-ai.io)
 [![License](https://img.shields.io/badge/license-Apache--2.0-3b82f6)](LICENSE)
 [![Homebrew tap](https://img.shields.io/badge/homebrew-agix--ai%2Fagix-8b5e34)](https://github.com/agix-ai/homebrew-agix)
