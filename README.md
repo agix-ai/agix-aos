@@ -1,5 +1,4 @@
-<img width="1179" height="2556" alt="image" src="https://github.com/user-attachments/assets/a86f5f90-3197-47eb-9d17-bafc307320c7" />
-
+<img width="1997" height="814" alt="image" src="https://github.com/user-attachments/assets/93bce386-65e1-4faf-b4ee-7413baa74799" />
 
 # Agix AOS
 
