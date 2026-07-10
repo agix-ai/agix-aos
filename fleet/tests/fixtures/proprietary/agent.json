@@ -1,0 +1,11 @@
+{
+  "name": "proprietary",
+  "display_name": "Proprietary Probe",
+  "description": "A proprietary (public=false) agent — the public-only gate must refuse it.",
+  "tier": "enterprise",
+  "public": false,
+  "role": "worker",
+  "trust": "proposer",
+  "instructions": "Run one governed pass and report.",
+  "boundary": { "secrets": [] }
+}

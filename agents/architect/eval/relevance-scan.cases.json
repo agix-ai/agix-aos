@@ -1,0 +1,57 @@
+{
+  "_doc": "Gold dataset for the Architect spec-annotator. Architect reads a spec + recent research briefs and classifies which brief items APPLY to the spec and which are DUPLICATES of older items. Each case drives the REAL scanSpec() -> filterScanResult() path with a recorded model output (raw_model_output), and scores the annotations (applies + duplicates) against gold by precision/recall/F1 — the matcher/critic recipe. An annotator that over-applies pollutes specs, so precision is gated. Guardrail cases feed malformed item_ids / invented brief_paths / malformed JSON and assert filterScanResult drops them. Grounding: wiki/research/2026-06-05-agent-evaluation-methodology.md §5 (critic/annotator eval).",
+  "briefs": [
+    {
+      "date": "2026-06-01",
+      "path": "wiki/research/2026-06-01-brief.md",
+      "markdown": "# Brief 2026-06-01\n\n### 2026-06-01.A1 Self-distilled agentic RL\nAgents learn from their own trajectories.\n\n### 2026-06-01.A2 Verifier-gated emission\nA scalar verifier suppresses low-signal findings before emission.\n\n### 2026-06-01.A3 Second-brain memory plugin\nOpenClaw-style memory cuts tokens 30%."
+    },
+    {
+      "date": "2026-05-25",
+      "path": "wiki/research/2026-05-25-brief.md",
+      "markdown": "# Brief 2026-05-25\n\n### 2026-05-25.B1 Process reward models\nA verifier scores intermediate steps to gate outputs.\n\n### 2026-05-25.B2 Employee advocacy market\nMarket sizing 2024-2026."
+    }
+  ],
+  "cases": [
+    {
+      "id": "verifier-spec-applies-and-dup",
+      "spec": "# Spec: Verifier-gated emission for Director deploy-health\nGate findings through a learned scalar verifier before they reach the operator.",
+      "raw_model_output": "{\"applies\":[{\"item_id\":\"2026-06-01.A2\",\"brief_path\":\"wiki/research/2026-06-01-brief.md\",\"relevance\":\"directly the technique this spec implements\",\"note\":\"\"}],\"duplicates\":[{\"item_id\":\"2026-06-01.A2\",\"brief_path\":\"wiki/research/2026-06-01-brief.md\",\"duplicate_of\":\"2026-05-25.B1\",\"duplicate_brief_path\":\"wiki/research/2026-05-25-brief.md\",\"note\":\"PRM is the same idea\"}],\"roadmap_impact\":[],\"architecture_conflicts\":[]}",
+      "gold": { "applies": [{ "item_id": "2026-06-01.A2" }], "duplicates": [{ "item_id": "2026-06-01.A2", "duplicate_of": "2026-05-25.B1" }] }
+    },
+    {
+      "id": "memory-spec-single-apply",
+      "spec": "# Spec: Second-brain knowledge layer\nEvery agent ships a memory layer that compounds with the user.",
+      "raw_model_output": "{\"applies\":[{\"item_id\":\"2026-06-01.A3\",\"brief_path\":\"wiki/research/2026-06-01-brief.md\",\"relevance\":\"memory plugin technique\",\"note\":\"\"}],\"duplicates\":[],\"roadmap_impact\":[],\"architecture_conflicts\":[]}",
+      "gold": { "applies": [{ "item_id": "2026-06-01.A3" }], "duplicates": [] }
+    },
+    {
+      "id": "model-error-overapply-and-miss",
+      "spec": "# Spec: Trajectory-based RL training loop\nTrain each agent's policy from its own execution trajectories.",
+      "raw_model_output": "{\"applies\":[{\"item_id\":\"2026-06-01.A1\",\"brief_path\":\"wiki/research/2026-06-01-brief.md\",\"relevance\":\"the core technique\",\"note\":\"\"},{\"item_id\":\"2026-06-01.A2\",\"brief_path\":\"wiki/research/2026-06-01-brief.md\",\"relevance\":\"loosely related\",\"note\":\"\"}],\"duplicates\":[],\"roadmap_impact\":[],\"architecture_conflicts\":[]}",
+      "gold": { "applies": [{ "item_id": "2026-06-01.A1" }, { "item_id": "2026-06-01.A3" }], "duplicates": [] },
+      "note": "Recorded model over-applies A2 (false positive) and misses A3 (false negative) — keeps F1 honest."
+    },
+    {
+      "id": "guardrail-malformed-item-id",
+      "spec": "# Spec: anything",
+      "raw_model_output": "{\"applies\":[{\"item_id\":\"2026-06-01.A1\",\"brief_path\":\"wiki/research/2026-06-01-brief.md\",\"relevance\":\"x\",\"note\":\"\"},{\"item_id\":\"A2\",\"brief_path\":\"wiki/research/2026-06-01-brief.md\",\"relevance\":\"x\",\"note\":\"\"}],\"duplicates\":[],\"roadmap_impact\":[],\"architecture_conflicts\":[]}",
+      "gold": { "applies": [{ "item_id": "2026-06-01.A1" }], "duplicates": [] },
+      "guardrail": "Un-qualified item_id 'A2' (no date prefix) must be dropped; the valid one kept."
+    },
+    {
+      "id": "guardrail-invented-brief-path",
+      "spec": "# Spec: anything",
+      "raw_model_output": "{\"applies\":[{\"item_id\":\"2026-06-01.A1\",\"brief_path\":\"wiki/research/2099-01-01-brief.md\",\"relevance\":\"x\",\"note\":\"\"}],\"duplicates\":[],\"roadmap_impact\":[],\"architecture_conflicts\":[]}",
+      "gold": { "applies": [], "duplicates": [] },
+      "guardrail": "An item attributed to a brief_path that was never loaded must be dropped (no invented sources)."
+    },
+    {
+      "id": "guardrail-malformed-json",
+      "spec": "# Spec: anything",
+      "raw_model_output": "Here you go: {applies: [oops not json",
+      "gold": { "applies": [], "duplicates": [] },
+      "guardrail": "Malformed JSON yields empty annotations, never a crash."
+    }
+  ]
+}

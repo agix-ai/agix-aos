@@ -1,0 +1,59 @@
+{
+  "name": "refactor",
+  "version": "0.3.0-tools-wired",
+  "display_name": "Agix Refactoring Pack",
+  "description": "A drop-in governed swarm that autonomously refactors and cleans up another codebase from a sidecar. Deliberately targets the HIGH-LEVEL structural refactorings coding agents are proven weak at (Extract Class/Subclass, Split Class, Move Method, Introduce Parameter Object) because those carry the largest structural-metric payoff. Metric-guided, behavior-preserving, actor!=verifier certified. Every campaign feeds the Comb so the hive gets stronger and more reliable on the next codebase.",
+  "status": "tools wired (9e029a9): smell-scout forages via the metric+walk+read+grep tools, refactor-surgeon mutates repo/ via the write tool, behavior-guard certifies via the metric tool + tester. Remaining: (1) COMMIT AUTHORITY — git-orchestrator is inspect-only (exec allowlist denies push/merge/deploy), so the branch/commit ceremony is unresolved; (2) wire the metric report into the loop's before/after re-measure; (3) a real end-to-end run against a live provider.",
+  "open_forks": {
+    "commit_authority": "Who commits the refactoring? git-orchestrator is inspect-only by policy. Options: autonomous commit via a narrowly-scoped git exec grant under the human's identity (matches sidecar zero-footprint + human-authorship), OR the pack edits repo/ + leaves the commit to the operator, OR it opens a PR. Decide before autonomous commit is enabled."
+  },
+  "emphasis": "structural-moat",
+  "agents": {
+    "new": [
+      { "name": "refactor-lead", "caste": "queen", "role": "campaign conductor — metric-guided, one atomic refactoring per branch" },
+      { "name": "smell-scout", "caste": "worker", "role": "read-only ranked structural worklist (find, don't fix)" },
+      { "name": "refactor-surgeon", "caste": "worker", "role": "apply ONE behavior-preserving structural refactoring" },
+      { "name": "behavior-guard", "caste": "worker", "role": "distinct certifier — behavior preserved + structure improved + no tangling" }
+    ],
+    "reused": [
+      { "name": "tester", "role": "behavior-preservation signal (the safety belt)" },
+      { "name": "git-orchestrator", "role": "atomic refactoring-only branch + commit ceremony" },
+      { "name": "onboarding", "role": "optional baseline: source map + AI-readiness scorecard" },
+      { "name": "sentinel", "role": "optional guardrail on any public-bound surface" }
+    ]
+  },
+  "loop": [
+    { "stage": "baseline", "agent": "smell-scout", "produces": "plans/refactor/{date}-worklist.md + before-metrics" },
+    { "stage": "select", "agent": "refactor-lead", "does": "take highest impact-per-risk candidate" },
+    { "stage": "characterize", "agent": "tester", "gate": "behavior test net exists for the touched surface, else write one FIRST" },
+    { "stage": "branch", "agent": "git-orchestrator", "does": "one refactoring-only branch" },
+    { "stage": "refactor", "agent": "refactor-surgeon", "does": "apply ONE behavior-preserving structural transform to repo/" },
+    { "stage": "certify", "agent": "behavior-guard", "gate": "behavior preserved + structure improved + no tangling, else REVERT" },
+    { "stage": "commit", "agent": "git-orchestrator", "does": "atomic human-voiced refactoring-only commit; re-measure" },
+    { "stage": "repeat", "agent": "refactor-lead", "until": "metric target met | worklist exhausted | budget spent" },
+    { "stage": "report", "agent": "refactor-lead", "produces": "plans/refactor/{date}-report.md (before/after delta)" }
+  ],
+  "sidecar": {
+    "layout": "run with repoRoot = the sidecar workspace; the target repo is the repo/ symlink; agent notes live in plans/ and notes/",
+    "prime_directive": "ZERO agentic footprint in repo/. Only the refactor-surgeon writes into repo/, and it writes CODE only, in seasoned-human voice, under the human's git identity.",
+    "target_pristine": true,
+    "run": "bun fleet/runtime/cli.ts run <agent> --dir agents --repoRoot sidecars/<name> [--provider anthropic]"
+  },
+  "metric_target": {
+    "guided_by": ["Class-LOC", "WMC (weighted methods per class)", "cyclomatic complexity", "coupling (fan-in/out)"],
+    "principle": "metric-guided beats exploratory 2-5x; re-measure after every atomic step; a step that leaves metrics flat or worse is sent back",
+    "code_health_floor_hint": 9.5
+  },
+  "compounding": {
+    "comb_branch": "software",
+    "learns": "which smells + which refactoring TYPES certified clean, on which kinds of codebase, with what metric delta",
+    "purpose": "cross-codebase commonalities accumulate in the Comb and become the distillation corpus for the local Gemma sidecar — the hive gets stronger and cheaper on every drop-in (KM + AOS + local model, compounding)",
+    "endgame_tiering": "workers migrate frontier -> local Gemma (Ollama gemma3:12b) as the distilled corpus proves out"
+  },
+  "provenance": {
+    "seed_video": "https://www.youtube.com/watch?v=f84XbvASkk4 (IBM/Martin Keen — What Is AI Code Refactoring?)",
+    "empirical_study": "Horikawa et al. 2025, Agentic Refactoring: An Empirical Study of AI Coding Agents (arXiv:2511.04824)",
+    "metric_guidance": "CodeScene — Making Legacy Code AI-Ready: Benchmarks on Agentic Refactoring",
+    "safety_framing": "IBM Think — What Is AI Code Refactoring; Kiro — Refactoring Made Right"
+  }
+}

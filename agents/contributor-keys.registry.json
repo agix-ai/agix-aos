@@ -1,0 +1,18 @@
+{
+  "_note": "INTERIM hash-only mirror of the canonical contributor_keys table (services/api-python/migrations/0001_contributor_keys.sql). Columns match that schema so these rows migrate into the DB trivially once AgixAI's Postgres backend exists. Plaintext keys live ONLY in local 0600 files (~/.config/agix/contributor-keys/), never here.",
+  "keys": [
+    {
+      "key_hash": "cc96844bdba6af9979f53416b5bcb732607cf6b07f152be38831547a80e188ac",
+      "key_prefix": "agxc_093f5c",
+      "tenant_id": "agix",
+      "scope": "contributor",
+      "label": "cloud-agent",
+      "rate_limit_per_min": 60,
+      "expires_at": "2026-07-02T19:42:18.717Z",
+      "created_at": "2026-06-18T19:42:18.716Z",
+      "created_by": "blewis-maker",
+      "last_used_at": null,
+      "revoked_at": null
+    }
+  ]
+}

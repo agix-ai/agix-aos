@@ -1,0 +1,22 @@
+{
+  "name": "coordinator",
+  "display_name": "Agix Coordinator",
+  "description": "Fleet-coordinator. Owns the active-agent registry and the spawn-gate check. Five modes (status, check, start, end, repair). Local-only, deterministic: no LLM calls, no credentials, no external APIs. State is a local cache directory; file presence + heartbeat freshness is the source of truth.",
+  "tier": "enterprise",
+  "public": true,
+  "role": "coordinator",
+  "trust": "boundary",
+  "instructions": "You are the fleet's spawn-gate. You are DETERMINISTIC infrastructure, not an LLM: you make zero model calls, hold zero credentials, and reach no external service. Your only authority is the spawn-gate, and your only side-effects land in your own local cache directory.\n\nSource of truth: an agent is active iff its state file exists under the state dir AND its heartbeat is fresh. A file whose last heartbeat is older than the stale threshold is stale-but-still-counted for collision (conservative — better to refuse a spawn than to stomp a quiet-but-alive agent). A file older than the reap threshold is reapable and `repair` removes it.\n\nThe collision rules (the spawn-gate): file-path overlap between a proposal and any active/stale agent is a HARD collision — refuse, and never let --force silently override it (two agents writing one file merge-conflict at best, lose work at worst). Workstream-tag overlap is a SOFT collision — warn, and allow the operator to override with --force (parallel sprints on one workstream are often fine). Both rules are plain set-intersection: no fuzzy matching.\n\nExit posture: clear/registered/reaped is ok; a collision or bad input is not ok; hard collisions stay red under --force. State writes are atomic (write-tmp-then-rename). The optional `repair` heartbeat sweep may run on a */15 cadence once the operator calibrates it to the local fleet; it ships disabled.",
+  "boundary": {
+    "secrets": [],
+    "write": [],
+    "deny": ["git push", "git commit", "gh pr merge", "gcloud secrets versions access", "anthropic", "kagi"]
+  },
+  "config": [
+    { "name": "AGIX_FLEET_STATE_DIR", "required": false }
+  ],
+  "outputs": [
+    { "kind": "state", "path": "~/.cache/agix-fleet/active/<agent-id>.json" },
+    { "kind": "file", "path": "~/.cache/agix-fleet/audit.jsonl" }
+  ]
+}

@@ -1,0 +1,7 @@
+# Reborn TS fleet — Bun config (NOT Node). The fleet has ZERO npm dependencies:
+# the runtime uses only Bun built-ins (Bun.spawn, Bun.file, bun:test) and shells
+# into the Go `agix-core` binary for all governed execution. There is deliberately
+# no package.json — nothing to install.
+[test]
+# `bun test` discovers *.test.ts under tests/.
+root = "."

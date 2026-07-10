@@ -1,0 +1,31 @@
+# Mentor CEO-mode permission policy.
+#
+# Spec: wiki/concepts/mentor-role-tracks.md § Permission policy schema
+# Read-only by design — edit_paths is empty, all git operations disabled.
+
+role: ceo
+display_name: "CEO mode"
+
+# Source: clients/<your-client>/governance/ROLE_ASSIGNMENTS.md §2
+# Dual-hat handling: an operator in <CLIENT>-CEO mode; the operator in Agix-CEO mode.
+operators_allowed:
+  - ceo@example.com   # <CLIENT> CEO; placeholder until D-4 confirms
+  - operator@example.com             # Agix CEO
+
+fire_allowlist:
+  - research
+  - mentor                        # brief mode only — capital-rigor briefing
+
+# Read-only — empty list disallows all writes in plan mode.
+edit_paths: []
+
+git:
+  commit:
+    allowed: false
+  push:
+    allowed: false
+  branch_create:
+    allowed: false
+
+session_log:
+  role_field_required: true

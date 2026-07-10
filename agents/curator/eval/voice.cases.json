@@ -1,0 +1,65 @@
+{
+  "_doc": "Gold dataset for the Curator voice critic. Each case is a marketing-copy sample plus, per voice rule, the findings the model returns (model_findings — frozen for deterministic replay) and the findings that SHOULD be flagged (expected). The suite drives the REAL runVoiceChecks() assembly and scores flagged-vs-gold by precision/recall/F1 — the standard critic-eval metric. A critic that cries wolf wastes operator attention, so precision is gated alongside recall. Grounding: wiki/research/2026-06-05-agent-evaluation-methodology.md §5 (critic eval).",
+  "cases": [
+    {
+      "id": "clean-copy",
+      "prose": "Agix installs the AI foundation you own and grow. Start with a Discovery sprint and keep everything we build together.",
+      "model_findings": { "jargon": [], "mission": [], "tone": [], "tagline": [] },
+      "expected": []
+    },
+    {
+      "id": "jargon-violation",
+      "prose": "Our platform uses RAG to surface answers from your knowledge base in milliseconds.",
+      "model_findings": {
+        "jargon": [{ "term": "RAG", "quote": "Our platform uses RAG to surface answers from your knowledge base in milliseconds." }],
+        "mission": [],
+        "tone": [],
+        "tagline": []
+      },
+      "expected": [
+        { "rule": "voice.no-insider-jargon", "quote": "Our platform uses RAG to surface answers from your knowledge base in milliseconds." }
+      ]
+    },
+    {
+      "id": "mission-lock-in",
+      "prose": "With Agix managed hosting you will always need us to keep your agents running smoothly.",
+      "model_findings": {
+        "jargon": [],
+        "mission": [{ "quote": "you will always need us to keep your agents running smoothly", "why": "implies vendor lock-in, contradicts foundation-you-own framing" }],
+        "tone": [],
+        "tagline": []
+      },
+      "expected": [
+        { "rule": "voice.mission-alignment", "quote": "you will always need us to keep your agents running smoothly" }
+      ]
+    },
+    {
+      "id": "tagline-drift",
+      "prose": "Agix: build AI that just works, out of the box.",
+      "model_findings": {
+        "jargon": [],
+        "mission": [],
+        "tone": [],
+        "tagline": [{ "quote": "build AI that just works", "original": "tagline", "why": "replaces the locked tagline with a different one" }]
+      },
+      "expected": [
+        { "rule": "voice.tagline-drift", "quote": "build AI that just works" }
+      ]
+    },
+    {
+      "id": "mixed-with-fp-and-fn",
+      "prose": "Leverage our cutting-edge RAG pipeline. Once you sign, Agix retains ownership of the deployed models. We are the synergy partner for your journey.",
+      "model_findings": {
+        "jargon": [{ "term": "RAG", "quote": "Leverage our cutting-edge RAG pipeline." }],
+        "mission": [],
+        "tone": [{ "quote": "We are the synergy partner for your journey.", "why": "generic-SaaS hype" }],
+        "tagline": []
+      },
+      "expected": [
+        { "rule": "voice.no-insider-jargon", "quote": "Leverage our cutting-edge RAG pipeline." },
+        { "rule": "voice.mission-alignment", "quote": "Agix retains ownership of the deployed models" }
+      ],
+      "note": "Realistic critic errors: the recorded model raises a tone finding not in gold (false positive) and misses the mission/ownership violation (false negative)."
+    }
+  ]
+}

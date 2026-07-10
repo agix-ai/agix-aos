@@ -1,0 +1,17 @@
+{
+  "//": "Reborn TS fleet — Bun-native, ZERO Node. No package.json, no npm deps.",
+  "compilerOptions": {
+    "lib": ["ESNext"],
+    "target": "ESNext",
+    "module": "ESNext",
+    "moduleResolution": "bundler",
+    "moduleDetection": "force",
+    "allowImportingTsExtensions": true,
+    "verbatimModuleSyntax": true,
+    "noEmit": true,
+    "strict": true,
+    "skipLibCheck": true,
+    "types": ["bun-types"]
+  },
+  "include": ["runtime/**/*.ts", "tests/**/*.ts", "../agents/*/agent.ts"]
+}

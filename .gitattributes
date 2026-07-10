@@ -1,0 +1,27 @@
+# Linguist — make GitHub's language bar reflect the PRODUCT (Go engine + TypeScript
+# fleet/console), not build artifacts, datasets, or the legacy Node harness being retired.
+# https://github.com/github-linguist/linguist/blob/main/docs/overrides.md
+
+# --- Build artifacts / generated output (never source; mostly untracked, marked defensively) ---
+dist/**                     linguist-generated=true
+**/.next/**                 linguist-generated=true
+**/node_modules/**          linguist-vendored=true
+*.min.js                    linguist-generated=true
+*.bundle.js                 linguist-generated=true
+
+# --- Research corpora & training data (data, not code) ---
+research/llm-training/**    linguist-vendored=true
+research/results/**         linguist-documentation=true
+research/**/*.json          linguist-vendored=true
+research/**/*.jsonl         linguist-vendored=true
+
+# --- Legacy Node bench harness — retired; benchmarks are re-run on the reborn Go/TS build ---
+bench/**/*.mjs              linguist-vendored=true
+
+# --- Client engagement code — not part of the OSS substrate ---
+clients/**                  linguist-vendored=true
+
+# --- Ensure the reborn stack counts as itself ---
+*.go                        linguist-language=Go
+*.ts                        linguist-language=TypeScript
+*.tsx                       linguist-language=TypeScript

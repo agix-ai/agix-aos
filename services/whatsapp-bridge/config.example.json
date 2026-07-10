@@ -1,0 +1,6 @@
+{
+  "allowlist": ["15551234567"],
+  "authDir": ".wwebjs_auth",
+  "commandPrefix": "",
+  "chromePath": ""
+}

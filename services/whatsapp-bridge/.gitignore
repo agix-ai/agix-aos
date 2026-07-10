@@ -1,0 +1,16 @@
+# whatsapp-bridge — keep all session/creds and operator config LOCAL + uncommitted.
+
+# whatsapp-web.js LocalAuth session + creds (the privacy spine).
+.wwebjs_auth/
+
+# Operator config (allowlist + paths). Copy config.example.json → config.json.
+config.json
+
+# whatsapp-web.js / puppeteer cached browser + media artifacts.
+.wwebjs_cache/
+.wwebjs_auth*/
+*.session
+session*/
+
+# Pairing QR rendered to a PNG (contains a live auth token — never commit).
+qr.png

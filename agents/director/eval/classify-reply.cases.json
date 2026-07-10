@@ -1,0 +1,149 @@
+{
+  "_doc": "Golden dataset for the Director reply-classifier. Each case carries the brief, the operator reply, a RECORDED model output (raw_model_output — a frozen snapshot of realistic classifier behavior so replay runs are deterministic), and the operator's TRUE intent (expected). Quality cases measure end-to-end classifier accuracy (macro-F1 over verbs). Guardrail cases feed deliberately malformed/invalid model output and assert Director's filterValidIntents sanitizes it. Re-record raw_model_output after a prompt/model change and diff the macro-F1. Grounding: wiki/research/2026-06-05-agent-evaluation-methodology.md §5 (intent-classifier eval).",
+  "briefs": {
+    "research-2026-06-01": "# Research Brief — 2026-06-01\n\n## Section A — Techniques\n\n### 2026-06-01.A1 Self-distilled agentic RL\nAgents learn from their own trajectories.\n\n### 2026-06-01.A2 Verifier-gated emission\nA scalar verifier suppresses low-signal findings.\n\n### 2026-06-01.A3 Memory plugin token reduction\nOpenClaw-style memory cuts tokens 30%.\n\n## Section B — Market\n\n### 2026-06-01.B1 Employee advocacy TAM\nMarket sizing 2024-2026.\n\n### 2026-06-01.B2 Procurement gates\nSOC2/DPA/SSO gate enterprise deals.\n",
+    "curator-2026-06-02": "# Curator Review — 2026-06-02\n\n## Critical\n\n**2026-06-02.C1** Tagline drift on the homepage hero.\n\n**2026-06-02.C2** Mission-contradicting lock-in language in pricing copy.\n\n## Warn\n\n**2026-06-02.W1** Insider jargon \"RAG\" without a buyer-language gloss.\n"
+  },
+  "cases": [
+    {
+      "id": "approve-single",
+      "brief": "research-2026-06-01",
+      "reply": "YES 2026-06-01.A1",
+      "raw_model_output": "{\"intents\":[{\"item_id\":\"2026-06-01.A1\",\"verb\":\"approve\",\"scope_hints\":\"\",\"raw_reply_excerpt\":\"YES 2026-06-01.A1\"}],\"unresolved\":[]}",
+      "expected": [{ "item_id": "2026-06-01.A1", "verb": "approve" }]
+    },
+    {
+      "id": "dive-with-scope",
+      "brief": "research-2026-06-01",
+      "reply": "DIVE 2026-06-01.B1 — focus on the SMB segment",
+      "raw_model_output": "Here is the JSON:\n{\"intents\":[{\"item_id\":\"2026-06-01.B1\",\"verb\":\"dive\",\"scope_hints\":\"focus on the SMB segment\",\"raw_reply_excerpt\":\"DIVE 2026-06-01.B1 — focus on the SMB segment\"}],\"unresolved\":[]}",
+      "expected": [{ "item_id": "2026-06-01.B1", "verb": "dive" }]
+    },
+    {
+      "id": "skip-single",
+      "brief": "research-2026-06-01",
+      "reply": "SKIP 2026-06-01.A3",
+      "raw_model_output": "{\"intents\":[{\"item_id\":\"2026-06-01.A3\",\"verb\":\"skip\",\"scope_hints\":\"\",\"raw_reply_excerpt\":\"SKIP 2026-06-01.A3\"}],\"unresolved\":[]}",
+      "expected": [{ "item_id": "2026-06-01.A3", "verb": "skip" }]
+    },
+    {
+      "id": "defer-single",
+      "brief": "research-2026-06-01",
+      "reply": "defer 2026-06-01.A2 for now, not this cycle",
+      "raw_model_output": "{\"intents\":[{\"item_id\":\"2026-06-01.A2\",\"verb\":\"defer\",\"scope_hints\":\"\",\"raw_reply_excerpt\":\"defer 2026-06-01.A2 for now\"}],\"unresolved\":[]}",
+      "expected": [{ "item_id": "2026-06-01.A2", "verb": "defer" }]
+    },
+    {
+      "id": "expand-single",
+      "brief": "research-2026-06-01",
+      "reply": "can you explain 2026-06-01.B2 more?",
+      "raw_model_output": "{\"intents\":[{\"item_id\":\"2026-06-01.B2\",\"verb\":\"expand\",\"scope_hints\":\"\",\"raw_reply_excerpt\":\"can you explain 2026-06-01.B2 more?\"}],\"unresolved\":[]}",
+      "expected": [{ "item_id": "2026-06-01.B2", "verb": "expand" }]
+    },
+    {
+      "id": "multi-intent",
+      "brief": "research-2026-06-01",
+      "reply": "YES 2026-06-01.A1, DIVE 2026-06-01.B1, SKIP 2026-06-01.A3",
+      "raw_model_output": "{\"intents\":[{\"item_id\":\"2026-06-01.A1\",\"verb\":\"approve\",\"scope_hints\":\"\",\"raw_reply_excerpt\":\"YES 2026-06-01.A1\"},{\"item_id\":\"2026-06-01.B1\",\"verb\":\"dive\",\"scope_hints\":\"\",\"raw_reply_excerpt\":\"DIVE 2026-06-01.B1\"},{\"item_id\":\"2026-06-01.A3\",\"verb\":\"skip\",\"scope_hints\":\"\",\"raw_reply_excerpt\":\"SKIP 2026-06-01.A3\"}],\"unresolved\":[]}",
+      "expected": [
+        { "item_id": "2026-06-01.A1", "verb": "approve" },
+        { "item_id": "2026-06-01.B1", "verb": "dive" },
+        { "item_id": "2026-06-01.A3", "verb": "skip" }
+      ]
+    },
+    {
+      "id": "section-command",
+      "brief": "research-2026-06-01",
+      "reply": "SKIP A",
+      "raw_model_output": "{\"intents\":[{\"item_id\":\"2026-06-01.A1\",\"verb\":\"skip\",\"scope_hints\":\"\",\"raw_reply_excerpt\":\"SKIP A\"},{\"item_id\":\"2026-06-01.A2\",\"verb\":\"skip\",\"scope_hints\":\"\",\"raw_reply_excerpt\":\"SKIP A\"},{\"item_id\":\"2026-06-01.A3\",\"verb\":\"skip\",\"scope_hints\":\"\",\"raw_reply_excerpt\":\"SKIP A\"}],\"unresolved\":[]}",
+      "expected": [
+        { "item_id": "2026-06-01.A1", "verb": "skip" },
+        { "item_id": "2026-06-01.A2", "verb": "skip" },
+        { "item_id": "2026-06-01.A3", "verb": "skip" }
+      ]
+    },
+    {
+      "id": "curator-fix",
+      "brief": "curator-2026-06-02",
+      "reply": "FIX 2026-06-02.C1",
+      "raw_model_output": "{\"intents\":[{\"item_id\":\"2026-06-02.C1\",\"verb\":\"fix\",\"scope_hints\":\"\",\"raw_reply_excerpt\":\"FIX 2026-06-02.C1\"}],\"unresolved\":[]}",
+      "expected": [{ "item_id": "2026-06-02.C1", "verb": "fix" }]
+    },
+    {
+      "id": "curator-fix-all-critical",
+      "brief": "curator-2026-06-02",
+      "reply": "FIX all critical",
+      "raw_model_output": "{\"intents\":[{\"item_id\":\"2026-06-02.C1\",\"verb\":\"fix\",\"scope_hints\":\"\",\"raw_reply_excerpt\":\"FIX all critical\"},{\"item_id\":\"2026-06-02.C2\",\"verb\":\"fix\",\"scope_hints\":\"\",\"raw_reply_excerpt\":\"FIX all critical\"}],\"unresolved\":[]}",
+      "expected": [
+        { "item_id": "2026-06-02.C1", "verb": "fix" },
+        { "item_id": "2026-06-02.C2", "verb": "fix" }
+      ]
+    },
+    {
+      "id": "no-action",
+      "brief": "research-2026-06-01",
+      "reply": "thanks, got it — great brief this week",
+      "raw_model_output": "{\"intents\":[],\"unresolved\":[]}",
+      "expected": []
+    },
+    {
+      "id": "model-error-misclassified-verb",
+      "brief": "research-2026-06-01",
+      "reply": "let's look closer at 2026-06-01.A2 before deciding",
+      "raw_model_output": "{\"intents\":[{\"item_id\":\"2026-06-01.A2\",\"verb\":\"approve\",\"scope_hints\":\"\",\"raw_reply_excerpt\":\"let's look closer at 2026-06-01.A2\"}],\"unresolved\":[]}",
+      "expected": [{ "item_id": "2026-06-01.A2", "verb": "dive" }],
+      "note": "Recorded model misread 'look closer' (dive) as approve — a realistic misclassification that keeps macro-F1 honest."
+    },
+    {
+      "id": "model-error-missed-intent",
+      "brief": "research-2026-06-01",
+      "reply": "YES 2026-06-01.A1 and dive into 2026-06-01.B2",
+      "raw_model_output": "{\"intents\":[{\"item_id\":\"2026-06-01.A1\",\"verb\":\"approve\",\"scope_hints\":\"\",\"raw_reply_excerpt\":\"YES 2026-06-01.A1\"}],\"unresolved\":[]}",
+      "expected": [
+        { "item_id": "2026-06-01.A1", "verb": "approve" },
+        { "item_id": "2026-06-01.B2", "verb": "dive" }
+      ],
+      "note": "Recorded model dropped the second intent — a realistic recall miss."
+    },
+    {
+      "id": "guardrail-invented-id",
+      "brief": "research-2026-06-01",
+      "reply": "YES 2026-06-01.A1",
+      "raw_model_output": "{\"intents\":[{\"item_id\":\"2026-06-01.A1\",\"verb\":\"approve\",\"scope_hints\":\"\",\"raw_reply_excerpt\":\"YES 2026-06-01.A1\"},{\"item_id\":\"2026-06-01.Z9\",\"verb\":\"approve\",\"scope_hints\":\"\",\"raw_reply_excerpt\":\"hallucinated\"}],\"unresolved\":[]}",
+      "expected": [{ "item_id": "2026-06-01.A1", "verb": "approve" }],
+      "guardrail": "Director must drop the invented ID Z9 (not in the brief) and keep the real one — 'never invent IDs', enforced on output."
+    },
+    {
+      "id": "guardrail-malformed-json",
+      "brief": "research-2026-06-01",
+      "reply": "YES 2026-06-01.A1",
+      "raw_model_output": "Sure! {intents: [{item_id: 2026-06-01.A1, verb: approve}]}",
+      "expected": [],
+      "guardrail": "Unquoted-key JSON must fail to parse → empty intents, never a crash."
+    },
+    {
+      "id": "guardrail-no-json",
+      "brief": "research-2026-06-01",
+      "reply": "hmm",
+      "raw_model_output": "I'm not sure what you'd like me to do here.",
+      "expected": [],
+      "guardrail": "No JSON object in the model output → empty intents."
+    },
+    {
+      "id": "guardrail-unknown-verb",
+      "brief": "research-2026-06-01",
+      "reply": "build 2026-06-01.A1",
+      "raw_model_output": "{\"intents\":[{\"item_id\":\"2026-06-01.A1\",\"verb\":\"build\",\"scope_hints\":\"\",\"raw_reply_excerpt\":\"build 2026-06-01.A1\"}],\"unresolved\":[]}",
+      "expected": [],
+      "guardrail": "Non-canonical verb 'build' is not in the supported set → dropped (the prompt mandates canonical verbs)."
+    },
+    {
+      "id": "guardrail-malformed-id",
+      "brief": "research-2026-06-01",
+      "reply": "YES A1",
+      "raw_model_output": "{\"intents\":[{\"item_id\":\"A1\",\"verb\":\"approve\",\"scope_hints\":\"\",\"raw_reply_excerpt\":\"YES A1\"}],\"unresolved\":[]}",
+      "expected": [],
+      "guardrail": "Un-qualified ID 'A1' is not well-formed (needs the date prefix) → dropped."
+    }
+  ]
+}

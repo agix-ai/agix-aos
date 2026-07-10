@@ -1,0 +1,17 @@
+[package]
+name = "lewis-aos-bus"
+version = "0.3.2"
+edition = "2021"
+description = "Local Rust intra-agent communication bus for Agix AOS: a loopback-TCP (127.0.0.1) daemon providing request/reply + pub/sub coordination between agents (macOS, Linux, Windows)."
+license = "Apache-2.0"
+
+[[bin]]
+name = "lewis-aos-bus"
+path = "src/main.rs"
+
+[dependencies]
+serde_json = "1"
+
+[profile.release]
+opt-level = 3
+lto = true

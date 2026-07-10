@@ -1,0 +1,13 @@
+{
+  "name": "probe",
+  "display_name": "Probe",
+  "description": "Minimal public reference agent used by the runner tests.",
+  "tier": "basic",
+  "public": true,
+  "role": "worker",
+  "trust": "proposer",
+  "instructions": "Run one governed pass and report.",
+  "tools": [],
+  "models": { "worker": ["mock"], "verifier": "mock", "workers": 1 },
+  "boundary": { "secrets": [], "write": ["wiki/probe/"] }
+}
