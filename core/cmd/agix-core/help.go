@@ -80,11 +80,17 @@ flags:
   --out DIR         output dir for {train,valid,test}.jsonl
   --min-trust <f>   drop certified leaves below this verifier trust (default 0.9)
 `,
-	"agent": `agix agent — run a reborn agent (manifest + governed hive)
+	"agent": `agix agent — author + run agents (manifest + governed hive)
+
+An agent is a manifest (agent.json: role · trust · tools · boundary · instructions) plus an
+optional agent.ts behavior. Author your own — no Go required.
 
 usage:
-  agix agent list [--dir agents] [--public-only]
-  agix agent run <name> "<task>" [--dir agents] [--provider mock] [--public-only]
+  agix agent new <name>          scaffold + interactive wizard (--defaults to skip prompts)
+  agix agent list                list your agents (--public-only)
+  agix agent edit <name>         open the manifest in $EDITOR, then re-validate
+  agix agent validate <name>     schema-check against the runner's contract
+  agix agent run <name> "<task>" [--dir agents] [--provider mock|anthropic|openai|gemini|local]
 `,
 	"autonomy": `agix autonomy — the per-domain autonomy rung (from the ledger)
 
