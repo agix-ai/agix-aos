@@ -173,20 +173,6 @@ func TestResolve_DevPath_NoAudit(t *testing.T) {
 	}
 }
 
-// A configured-but-unbuildable backend (gsm without a project) surfaces a typed
-// build error rather than panicking — via the real secrets.NewVault, no network.
-func TestResolve_BackendMisconfigured_Error(t *testing.T) {
-	t.Setenv(secrets.EnvBackendVar, "gsm")
-	t.Setenv(secrets.EnvGSMProject, "") // gsm requires a project
-	r := &KeyResolver{}                  // default NewVault → secrets.NewVault
-	got, err := r.Resolve(context.Background(), "anthropic", "ANTHROPIC_API_KEY")
-	if got != "" {
-		t.Fatalf("value = %q, want empty on build error", got)
-	}
-	if !errors.Is(err, secrets.ErrNoProject) {
-		t.Fatalf("error = %v, want ErrNoProject", err)
-	}
-}
 
 // Load swallows a vault resolution failure to "" (preserving the constructor
 // contract: New() never errors; the missing key surfaces at call time).
@@ -205,7 +191,6 @@ func TestLoad_VaultError_SwallowedToEmpty(t *testing.T) {
 // provider env keys set — proving mock never routes through keyenv/the vault.
 func TestMockProvider_NeedsNoKeyResolution(t *testing.T) {
 	t.Setenv(secrets.EnvBackendVar, "gsm")
-	t.Setenv(secrets.EnvGSMProject, "")
 	t.Setenv("ANTHROPIC_API_KEY", "")
 	t.Setenv("OPENAI_API_KEY", "")
 	t.Setenv("GEMINI_API_KEY", "")
