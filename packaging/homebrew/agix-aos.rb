@@ -51,6 +51,12 @@ class AgixAos < Formula
       system "go", "build", "-o", libexec/"bin/agix-core", "./cmd/agix-core"
     end
 
+    # Build the fleet TUI (agix-tui) — an OWN nested module (Bubble Tea + Lipgloss), so it needs
+    # a separate build; it lands beside agix-core in libexec/bin, where `agix fleet` execs it.
+    cd libexec/"core/cmd/agix-tui" do
+      system "go", "build", "-o", libexec/"bin/agix-tui", "."
+    end
+
     # Build the Rust intra-agent bus from the shipped source so `agix swarm` / `agix agent
     # serve` work from the installed pack (too big + arch-specific to ship prebuilt; compiled
     # at install time — Homebrew-idiomatic, cross-arch). Canonical path: libexec/bin/lewis-aos-bus.
