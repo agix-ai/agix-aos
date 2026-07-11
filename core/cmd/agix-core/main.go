@@ -87,6 +87,8 @@ func main() {
 		os.Exit(RunHiveCLI(args[1:]))
 	case "agent":
 		os.Exit(cmdAgent(args[1:]))
+	case "fleet":
+		os.Exit(cmdFleet(args[1:]))
 	case "km":
 		os.Exit(cmdKM(args[1:]))
 	case "distill-export":
@@ -102,6 +104,11 @@ func main() {
 		fmt.Fprintln(os.Stdout)
 		usageTo(os.Stdout)
 	default:
+		// Task modes: `agix debug "<issue>"` → the specialist agent that owns that problem,
+		// through the same governed agent-run path (actor≠verifier).
+		if ag, ok := taskModes[args[0]]; ok {
+			os.Exit(cmdAgentRun(append([]string{ag}, args[1:]...)))
+		}
 		// Terse, not the whole help block — point at `agix help`.
 		fmt.Fprintf(os.Stderr, "%s: unknown command %q\nRun '%s help' for usage.\n", appName, args[0], appName)
 		os.Exit(2)
@@ -132,11 +139,17 @@ func usageTo(w *os.File) {
 	b.WriteString(row(appName+` swarm "<task>"`, "parallel fan-out — decompose→workers→converge"))
 	b.WriteString(row(appName+` hive "<task>"`, "governed worker swarm (queen + verifier)"))
 	b.WriteString(row(appName+" route <cap>", "show the provider/model a capability resolves to"))
+	b.WriteString("\n" + h("SOLVE A PROBLEM") + paint(cDim, "  (names a problem → the right agent, governed)") + "\n")
+	b.WriteString(row(appName+` debug "<issue>"`, "root-cause a failure (investigator)"))
+	b.WriteString(row(appName+` refactor "<x>"`, "restructure code, governed (refactor-lead)"))
+	b.WriteString(row(appName+` research "<q>"`, "curated sources → graded brief (research)"))
+	b.WriteString("  " + paint(cDim, "also:") + " " + appName + " review · " + appName + " test · " + appName + " onboard\n")
 	b.WriteString("\n" + h("KNOWLEDGE (the Comb)") + "\n")
 	b.WriteString(row(appName+" km <sub>", "put|link|retrieve|traverse|cosign|stats"))
 	b.WriteString(row(appName+" distill-export", "certified Comb record → mlx-lm corpus"))
 	b.WriteString("\n" + h("GOVERNANCE & AGENTS") + "\n")
 	b.WriteString(row(appName+" agent <sub>", "new | list | edit | validate | run"))
+	b.WriteString(row(appName+" fleet", "interactive TUI — browse the fleet"))
 	b.WriteString(row(appName+" autonomy <sub>", "status | gate | observe (per-domain rung)"))
 	b.WriteString(row(appName+" secret <sub>", "check <ref> | scan <file>"))
 	b.WriteString(row(appName+" verify-guard", "independent-verifier gate (actor≠verifier)"))

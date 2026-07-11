@@ -8,6 +8,18 @@ package main
 // helpFlag reports whether s is a help request.
 func helpFlag(s string) bool { return s == "-h" || s == "--help" || s == "-help" || s == "help" }
 
+// taskModes map a problem-type verb to the specialist agent that owns it, so a user names the
+// problem, not the machinery: `agix debug "<issue>"` runs the investigator through the same
+// governed (actor≠verifier) path as `agix agent run investigator "<issue>"`.
+var taskModes = map[string]string{
+	"debug":    "investigator",
+	"refactor": "refactor-lead",
+	"research": "research",
+	"review":   "pr-reviewer",
+	"test":     "tester",
+	"onboard":  "onboarding",
+}
+
 // verbHelp returns the help text for a verb and whether one exists. Lines stay ≤80 cols so
 // they don't hard-wrap on a standard terminal.
 func verbHelp(verb string) (string, bool) {
@@ -124,5 +136,35 @@ usage:
 
 usage:
   agix swarm --task "<task>" [--workers N] [per-role model flags]
+`,
+
+	"fleet": `agix fleet — the interactive fleet TUI (browse agents, inspect their manifests)
+
+usage:
+  agix fleet [agents-dir]      # defaults to ./agents
+
+keys: ↑/↓ or j/k move · g/G top/bottom · q quit. Runs the agix-tui binary (kept in its own
+module so the UI toolkit never touches the born-clean core).
+`,
+
+	// ── task modes: name a problem, get the right agent (governed) ──────────────────
+	"debug": `agix debug "<issue>" — root-cause a failure via the investigator agent
+(investigate → analyze → hypothesize → root cause). Finds the cause; never edits source.
+Same as: agix agent run investigator "<issue>". Accepts the agent-run flags (--provider, --dir…).
+`,
+	"refactor": `agix refactor "<target>" — restructure code via the refactor-lead agent, governed
+(behavior-preserving; the actor≠verifier gate applies). Same as: agix agent run refactor-lead "…".
+`,
+	"research": `agix research "<question>" — scan curated sources and synthesize a graded brief
+via the research agent. Same as: agix agent run research "<question>".
+`,
+	"review": `agix review "<target>" — review a diff/PR via the pr-reviewer agent.
+Same as: agix agent run pr-reviewer "<target>".
+`,
+	"test": `agix test "<scope>" — run the suite and report pass/fail + regressions via the tester
+agent (never patches source to make a test pass). Same as: agix agent run tester "<scope>".
+`,
+	"onboard": `agix onboard "<repo>" — read a codebase (read-only) and produce a source map +
+readiness assessment via the onboarding agent. Same as: agix agent run onboarding "<repo>".
 `,
 }
