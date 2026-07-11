@@ -25,7 +25,7 @@
       "architecture/"
     ],
     "write": ["wiki/gtm-advisor/"],
-    "deny": ["gh release create", "git push", "gcloud deploy", "firebase deploy", "npm publish"]
+    "deny": ["gh release create", "git push", "cloud secret CLI deploy", "deploy", "npm publish"]
   },
   "config": [
     { "name": "ANTHROPIC_API_KEY", "required": false }

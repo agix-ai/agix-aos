@@ -32,7 +32,7 @@ func captureStdout(t *testing.T, fn func() int) (string, int) {
 // untouched) and asserts the emitted stdout is exactly the frozen agix.swarm.v1
 // contract, at $0, verified, with all five bees.
 func TestRunSwarmCLIFirstLightJSON(t *testing.T) {
-	// Run from a temp dir so the .agix-core/ledger.jsonl lands there, not in the repo.
+	// Run from a temp dir so the .agix/ledger.jsonl lands there, not in the repo.
 	dir := t.TempDir()
 	orig, err := os.Getwd()
 	if err != nil {

@@ -47,7 +47,7 @@ RUN CGO_ENABLED=0 GOOS=linux go build -trimpath \
 FROM gcr.io/distroless/static-debian12:nonroot
 COPY --from=build /agix-core /agix-core
 # /tmp is writable by the distroless nonroot user; the runtime audit ledger is
-# written under ./.agix-core/ relative to CWD, so anchor CWD somewhere writable.
+# written under ./.agix/ relative to CWD, so anchor CWD somewhere writable.
 WORKDIR /tmp
 ENTRYPOINT ["/agix-core"]
 CMD ["run", "reporting home from a cloud drone", "--provider", "mock"]

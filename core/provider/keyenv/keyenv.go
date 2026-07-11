@@ -5,7 +5,7 @@
 // Resolution has two modes:
 //
 //   - Secure (AGIX_SECRET_BACKEND set): the key is pulled through the guard-bee
-//     vault (core/secrets) — the OS keychain or Google Secret Manager — so worker
+//     vault (core/secrets) — the OS keychain or a cloud secret manager — so worker
 //     bees never read a raw key straight from the process environment. A value-free
 //     provenance line (provider + ref + backend source, NEVER the value) is audited
 //     on each vault resolution.
@@ -31,7 +31,7 @@ import (
 
 // vaultResolver is the subset of *secrets.Vault this package needs: resolve a
 // logical Ref and name its backend for audit. *secrets.Vault satisfies it; tests
-// inject a fake so no keychain/gcloud call is ever made under `go test`.
+// inject a fake so no keychain/cloud secret CLI call is ever made under `go test`.
 type vaultResolver interface {
 	Resolve(ctx context.Context, ref secrets.Ref) (string, error)
 	Source() string
@@ -47,7 +47,7 @@ type AuditFunc func(provider string, ref secrets.Ref, source string)
 // a secure backend is configured and falling back to the dev env/file path
 // otherwise. The zero value is usable: it consults AGIX_SECRET_BACKEND on each
 // call and builds a real *secrets.Vault when a secure backend is set. All fields
-// are injectable so tests can drive it without touching the OS keychain or gcloud.
+// are injectable so tests can drive it without touching the OS keychain or cloud secret CLI.
 type KeyResolver struct {
 	// Vault, when non-nil, is used directly and unconditionally (tests inject a
 	// fake here). When nil, a vault is built via NewVault only if a backend is set.

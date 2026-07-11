@@ -1,3 +1,6 @@
+# typed: strict
+# frozen_string_literal: true
+
 # Homebrew formula for Agix AOS — `brew install agix-aos`.
 #
 # Agix AOS is the reborn stack: a Go core + the `agix-core` CLI, a TypeScript agent
@@ -12,22 +15,22 @@
 # matching root LICENSE, then push this formula to the public tap
 # (e.g. `brew tap agix-ai/agix && brew install agix-aos`).
 class AgixAos < Formula
-  desc "Agix AOS — the agix CLI (Go) + TypeScript agent fleet (agentic operating system)"
+  desc "Agentic operating system: Go CLI plus a TypeScript agent fleet"
   homepage "https://github.com/agix-ai/agix-aos"
 
-  # Reborn Go/TS/Rust artifact (v0.1.0 — the fresh reborn baseline; matches the
+  # Reborn Go/TS/Rust artifact (v0.1.1 — the fresh reborn baseline; matches the
   # `agix-core` binary constant in core/cmd/agix-core/main.go). Built from the staged
   # public tree by scripts/release/stage-reborn-public.sh.
-  # OPERATOR: `url` assumes the release asset is attached to the `v0.1.0` tag of the
+  # OPERATOR: `url` assumes the release asset is attached to the `v0.1.1` tag of the
   # public repo agix-ai/agix-aos. If you host the tarball elsewhere (e.g. the
   # homebrew-agix tap release), update `url` to match. The `sha256` below is the hash of
-  # dist/agix-aos-0.1.0.tar.gz — upload THAT exact file. If you rebuild the tarball,
-  # recompute: `shasum -a 256 dist/agix-aos-0.1.0.tar.gz`. (The copy of this formula
+  # dist/agix-aos-0.1.1.tar.gz — upload THAT exact file. If you rebuild the tarball,
+  # recompute: `shasum -a 256 dist/agix-aos-0.1.1.tar.gz`. (The copy of this formula
   # that rides inside the tarball necessarily can't carry its own post-build hash — the
   # tap copy of this formula is what `brew` verifies against, and it is authoritative.)
-  url "https://github.com/agix-ai/agix-aos/releases/download/v0.1.0/agix-aos-0.1.0.tar.gz"
-  version "0.1.0"
-  sha256 "0e23d148d3d20360dc7885e6ff3339c7dc26711b69d2863aabe046619acdabe1"
+  url "https://github.com/agix-ai/agix-aos/releases/download/v0.1.1/agix-aos-0.1.1.tar.gz"
+  # version is scanned from the URL (0.1.1) — an explicit `version` line is redundant (brew audit).
+  sha256 "dc055d6afbcb14e6b05420f9415ade4e4c981f83aa126f543799ec68769b1511"
   license "Apache-2.0"
 
   # Build-time toolchains: Go compiles the `agix-core` CLI + the Go core; Rust compiles
@@ -52,9 +55,10 @@ class AgixAos < Formula
     # serve` work from the installed pack (too big + arch-specific to ship prebuilt; compiled
     # at install time — Homebrew-idiomatic, cross-arch). Canonical path: libexec/bin/lewis-aos-bus.
     cd libexec/"cli/crates/lewis-aos-bus" do
-      system "cargo", "build", "--release"
+      # Install straight into libexec/bin via std_cargo_args (audit-clean; no build+move, no
+      # rubocop-disable directive — both of which brew audit rejects in a tap).
+      system "cargo", "install", *std_cargo_args(root: libexec, path: ".")
     end
-    (libexec/"bin").install libexec/"cli/crates/lewis-aos-bus/target/release/lewis-aos-bus"
 
     # Thin wrapper: `agix` execs the Go binary directly. NO Node.
     #
@@ -88,15 +92,16 @@ class AgixAos < Formula
       • Platform: macOS supported; Linux is beta (unverified end-to-end).
 
       Get started:  agix
-      Uninstall:    brew uninstall agix-aos  &&  agix uninstall --purge-state
+      Uninstall:    brew uninstall agix-aos  &&  rm -rf ~/.config/agix ~/.local/state/agix
     EOS
   end
 
   test do
-    # The wrapper execs the Go CLI, which prints `agix-core <v>` from its constant in
-    # core/cmd/agix-core/main.go. This formula (0.1.0) and the Go binary (0.1.0) now
-    # agree (CHANGELOG.md now leads with the reborn [0.1.0] entry). If you bump the
-    # reborn version, bump the Go constant too so this assertion stays honest.
-    assert_match "agix-core #{version}", shell_output("#{bin}/agix --version")
+    # The wrapper execs the Go CLI, which prints `agix <v>` (script-friendly, no banner/color)
+    # from `--version`. This formula (0.1.1) and the Go binary (0.1.1) must agree — if you bump
+    # the reborn version, bump the `version` constant in core/cmd/agix-core/main.go too so this
+    # assertion stays honest. (Bare `agix version` shows the branded banner; `--version` stays
+    # parseable for scripts and this test.)
+    assert_match "agix #{version}", shell_output("#{bin}/agix --version")
   end
 end

@@ -1,8 +1,8 @@
 // verify-guard — the general independent-verifier gate (actor ≠ verifier,
-// enforced) as an agix-core verb. This is the born-clean, zero-Node replacement
+// enforced) as an agix verb. This is the born-clean, zero-Node replacement
 // for `node lib/agix-verifier-guard.mjs` in .github/workflows/verifier-guard.yml.
 //
-//	agix-core verify-guard [--review <path>] [--repo owner/repo] [--pr N]
+//	agix verify-guard [--review <path>] [--repo owner/repo] [--pr N]
 //	                       [--allowlist <path>] [--risk <path>]
 //
 // It asserts that a PR touching a RISK-AREA path carries an APPROVING code-host
@@ -43,17 +43,9 @@ func cmdVerifyGuard(args []string) int {
 		return 2
 	}
 
-	// Allow-list is mandatory: no allow-list → fail closed.
-	allowlist, err := vg.LoadAllowlist(allowlistPath)
-	if err != nil {
-		return failClosed(err)
-	}
-	taxonomy, err := vg.LoadTaxonomy(riskPath)
-	if err != nil {
-		return failClosed(err)
-	}
-
-	// Resolve the PR review context — injected file or a live `gh` read.
+	// Resolve the PR review context FIRST — validate the input the user explicitly passed
+	// (--review must be a JSON review context) before the mandatory config, so a bad review
+	// file blames the review, not the allow-list path the user never mentioned.
 	var rc vg.ReviewContext
 	if reviewPath != "" {
 		rc, err = vg.LoadReviewContext(reviewPath)
@@ -78,6 +70,22 @@ func cmdVerifyGuard(args []string) int {
 		}
 	}
 
+	taxonomy, err := vg.LoadTaxonomy(riskPath)
+	if err != nil {
+		return failClosed(err)
+	}
+
+	// Classify risk BEFORE requiring the allow-list. A non-risk PR passes immediately (as the
+	// help promises) and needs no allow-list; only a risk-area PR must satisfy one, so a missing
+	// allow-list fails closed only when it actually gates something.
+	var allowlist vg.Allowlist
+	if len(vg.ClassifyRisk(rc.Files, &taxonomy).RiskClasses) > 0 {
+		allowlist, err = vg.LoadAllowlist(allowlistPath)
+		if err != nil {
+			return failClosed(err)
+		}
+	}
+
 	decision := vg.Decide(vg.DecideInput{
 		Files:     rc.Files,
 		Author:    rc.Author,
@@ -93,9 +101,8 @@ func cmdVerifyGuard(args []string) int {
 	appendToEnvFile("GITHUB_OUTPUT", verifyGuardOutputs(decision, rc.Author))
 
 	if decision.Outcome == vg.OutcomeFail {
-		fmt.Fprintf(os.Stderr,
-			"::error title=verify-guard::Risk-area PR blocked — no independent %sapproval from an allow-listed verifier (%s).\n",
-			vgHumanWord(decision.HumanRequired), decision.GateVerdict)
+		vgError(fmt.Sprintf("Risk-area PR blocked — no independent %sapproval from an allow-listed verifier (%s).",
+			vgHumanWord(decision.HumanRequired), decision.GateVerdict))
 		return 1
 	}
 	return 0
@@ -104,8 +111,19 @@ func cmdVerifyGuard(args []string) int {
 // failClosed reports an internal error as a red check and returns a blocking exit
 // code — a risk-area gate must never silently pass on an internal error.
 func failClosed(err error) int {
-	fmt.Fprintf(os.Stderr, "::error title=verify-guard::%v\n", err)
+	vgError(err.Error())
 	return 1
+}
+
+// vgError writes a verify-guard error. Under GitHub Actions it emits the `::error::`
+// workflow-command annotation (so the check renders red in the UI); elsewhere — a human at
+// a terminal running it on a local review — it prints a plain, readable message.
+func vgError(msg string) {
+	if os.Getenv("GITHUB_ACTIONS") == "true" {
+		fmt.Fprintf(os.Stderr, "::error title=verify-guard::%s\n", msg)
+		return
+	}
+	fmt.Fprintf(os.Stderr, "verify-guard: %s\n", msg)
 }
 
 // resolvePRNumberFromEnv reads the PR number from PR_NUMBER, or falls back to the
@@ -272,10 +290,10 @@ func parseVerifyGuardArgs(args []string) (review, repo, pr, allowlist, risk stri
 }
 
 func verifyGuardUsage() {
-	fmt.Fprint(os.Stderr, `agix-core verify-guard — the independent-verifier gate (actor ≠ verifier)
+	fmt.Fprint(os.Stderr, `agix verify-guard — the independent-verifier gate (actor ≠ verifier)
 
 usage:
-  agix-core verify-guard [--review <path>] [--repo owner/repo] [--pr N] \
+  agix verify-guard [--review <path>] [--repo owner/repo] [--pr N] \
                          [--allowlist <path>] [--risk <path>]
 
 input modes:

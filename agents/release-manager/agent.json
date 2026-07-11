@@ -36,8 +36,8 @@
       "gh pr merge",
       "gh release create",
       "gh workflow run",
-      "gcloud run deploy",
-      "firebase deploy"
+      "cloud run deploy",
+      "deploy"
     ]
   },
   "config": [

@@ -2,7 +2,7 @@
 // secrets so worker bees NEVER see raw keys.
 //
 // It is the ONLY code that touches raw secret material. Secrets are pulled from
-// a pluggable vault backend (an OS keychain, Google Secret Manager, …) — never a
+// a pluggable vault backend (an OS keychain, a cloud secret manager, …) — never a
 // plaintext file sourced into every bee's environment. A Broker brokers
 // least-privilege, just-in-time access (a role only gets the refs its policy
 // allowlist names), and an EgressScanner inspects anything crossing the hive
@@ -12,7 +12,7 @@
 //   - A secret VALUE is never logged, never stored in an audit record, never
 //     placed in a Finding, and never written to disk by this package.
 //   - Backends resolve lazily: constructing a Vault or Broker performs no
-//     keychain/gcloud call, so tests and unrelated code never hit the OS store.
+//     keychain/cloud secret CLI call, so tests and unrelated code never hit the OS store.
 //   - The env-var backend is dev-only and announces itself loudly, once.
 //
 // Copyright 2026 Agix AI LLC. Apache-2.0.
@@ -63,10 +63,8 @@ func (t RefTable) name(ref Ref) string {
 
 // Environment variables that select and configure the backend.
 const (
-	// EnvBackendVar selects the backend: "keychain" (default), "gsm", or "env".
+	// EnvBackendVar selects the backend: "keychain" (default) or "env".
 	EnvBackendVar = "AGIX_SECRET_BACKEND"
-	// EnvGSMProject names the Google Cloud project for the gsm backend.
-	EnvGSMProject = "AGIX_GSM_PROJECT"
 )
 
 // DefaultKeychainService is the keychain "service" the guard bee stores secrets
@@ -80,8 +78,6 @@ var (
 	ErrDenied = errors.New("secret access denied by policy")
 	// ErrUnsupportedOS is returned by the keychain backend off macOS/Linux.
 	ErrUnsupportedOS = errors.New("keychain backend unsupported on this OS")
-	// ErrNoProject is returned when the gsm backend is selected without a project.
-	ErrNoProject = errors.New("gsm backend requires " + EnvGSMProject)
 )
 
 // ResolveError is a backend resolution failure. Its Reason is scrubbed: it names
@@ -104,7 +100,6 @@ type Vault struct {
 }
 
 // NewVault builds a Vault from the environment: AGIX_SECRET_BACKEND in
-// {keychain (default), gsm, env}; the gsm backend also reads AGIX_GSM_PROJECT.
 // Construction performs NO backend call — a missing key only surfaces when a
 // value is actually resolved.
 func NewVault() (*Vault, error) {
@@ -114,22 +109,13 @@ func NewVault() (*Vault, error) {
 			backend: &KeychainBackend{Service: DefaultKeychainService},
 			source:  "keychain",
 		}, nil
-	case "gsm":
-		project := strings.TrimSpace(os.Getenv(EnvGSMProject))
-		if project == "" {
-			return nil, ErrNoProject
-		}
-		return &Vault{
-			backend: &GSMBackend{Project: project},
-			source:  "gsm:" + project,
-		}, nil
 	case "env":
 		return &Vault{
 			backend: &EnvBackend{},
 			source:  "env",
 		}, nil
 	default:
-		return nil, fmt.Errorf("secrets: unknown %s=%q (keychain|gsm|env)", EnvBackendVar, backend)
+		return nil, fmt.Errorf("secrets: unknown %s=%q (keychain|env)", EnvBackendVar, backend)
 	}
 }
 

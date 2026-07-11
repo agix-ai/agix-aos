@@ -2,7 +2,7 @@
 # The BUILD CONTEXT is services/ (one level up), because the module consumes
 # services/go-common via a relative replace:
 #
-#   gcloud builds submit services \
+#   cloud build submit services \
 #     --config services/coord-mcp/cloudbuild.yaml \
 #     --substitutions "_IMAGE_URI=<uri>,_VERSION=<git-sha>"
 steps:

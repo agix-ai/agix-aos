@@ -1,10 +1,10 @@
-// Command agix-core is the Agix orchestration core as a single static binary.
+// Command agix is the Agix orchestration core as a single static binary.
 //
-//	agix-core version
-//	agix-core route <capability>
-//	agix-core run "<task>" [--provider mock|anthropic|openai|gemini|local] [--capability <cap>] [--report-home <url>]
-//	agix-core flow "<task>" [--gate=approve|reject] [--provider mock]
-//	agix-core hive "<task>" [--workers N] [--queen ID] [--worker-models ID,…] [--verifier ID]
+//	agix version
+//	agix route <capability>
+//	agix run "<task>" [--provider mock|anthropic|openai|gemini|local] [--capability <cap>] [--report-home <url>]
+//	agix flow "<task>" [--gate=approve|reject] [--provider mock]
+//	agix hive "<task>" [--workers N] [--queen ID] [--worker-models ID,…] [--verifier ID]
 //
 // With --report-home <gateway-url>, a completed run also maps its Result into a
 // cross-hive report Envelope and POSTs it (bearer AGIX_HIVE_KEY) to a hive's
@@ -16,7 +16,7 @@
 // port + mem engine, pausing at the ratification gate (actor≠verifier) and
 // resuming with the --gate verdict. `--provider mock` (the default) is
 // deterministic and zero-cost — no network, no API key. The runtime audit ledger
-// is written under ./.agix-core/ (gitignored).
+// is written under ./.agix/ (gitignored).
 //
 // Copyright 2026 Agix AI LLC. Apache-2.0.
 package main
@@ -41,19 +41,40 @@ import (
 	"github.com/agix-ai/agix/core/router"
 )
 
-const version = "0.1.0"
+const version = "0.1.1"
 
-const ledgerPath = ".agix-core/ledger.jsonl"
+const ledgerPath = ".agix/ledger.jsonl"
 
 func main() {
 	args := os.Args[1:]
 	if len(args) == 0 {
-		usage()
-		os.Exit(2)
+		// Bare `agix` is the front door the brew caveats promise ("Get started: agix").
+		// Present the banner + help on stdout and exit cleanly — not a stderr error.
+		fmt.Print(banner())
+		fmt.Fprintln(os.Stdout)
+		usageTo(os.Stdout)
+		os.Exit(0)
+	}
+	// `agix <verb> [sub] --help|-h` — print that verb's help on stdout, exit 0, before any
+	// parser (the verb's or a subcommand's Go flag set) can reject the flag. Scanning all args
+	// (not just args[1]) makes `agix km stats --help` branded too, not just `agix km --help`.
+	if len(args) >= 2 {
+		for _, a := range args[1:] {
+			if helpFlag(a) {
+				if h, ok := verbHelp(args[0]); ok {
+					fmt.Fprint(os.Stdout, h)
+					os.Exit(0)
+				}
+				break
+			}
+		}
 	}
 	switch args[0] {
-	case "version", "-v", "--version":
-		fmt.Printf("agix-core %s\n", version)
+	case "version":
+		fmt.Print(banner())
+	case "-v", "--version":
+		// script-friendly: bare, parseable, no banner/color
+		fmt.Printf("%s %s\n", appName, version)
 	case "route":
 		os.Exit(cmdRoute(args[1:]))
 	case "run":
@@ -76,34 +97,61 @@ func main() {
 		os.Exit(cmdSecret(args[1:]))
 	case "verify-guard":
 		os.Exit(cmdVerifyGuard(args[1:]))
-	case "help", "-h", "--help":
-		usage()
+	case "help", "-h", "--help", "-help":
+		fmt.Print(banner())
+		fmt.Fprintln(os.Stdout)
+		usageTo(os.Stdout)
 	default:
-		fmt.Fprintf(os.Stderr, "unknown command %q\n\n", args[0])
-		usage()
+		// Terse, not the whole help block — point at `agix help`.
+		fmt.Fprintf(os.Stderr, "%s: unknown command %q\nRun '%s help' for usage.\n", appName, args[0], appName)
 		os.Exit(2)
 	}
 }
 
-func usage() {
-	fmt.Fprint(os.Stderr, `agix-core — the Agix orchestration core (single binary)
+// usageTo writes the grouped command reference to w. Section headers are honey-tinted on a
+// TTY; the command names always read as `agix …` (never the on-disk `agix-core`). Every line
+// stays ≤80 cols so it doesn't hard-wrap on a standard terminal; per-verb detail lives behind
+// `agix <command> --help`.
+func usageTo(w *os.File) {
+	h := func(s string) string { return paint(cHoney+cBold, s) }
+	// row aligns a honey command name in a 22-col gutter, then its description.
+	row := func(name, desc string) string {
+		pad := ""
+		if n := 22 - len(name); n > 0 {
+			pad = spaces(n)
+		}
+		return "  " + paint(cHoney, name) + pad + desc + "\n"
+	}
+	var b strings.Builder
+	b.WriteString(h("USAGE") + "\n")
+	b.WriteString(row(appName+" <command>", "[flags]"))
+	b.WriteString(row(appName+" help", "this reference · "+appName+" <command> --help for a verb"))
+	b.WriteString("\n" + h("RUN THE HIVE") + "\n")
+	b.WriteString(row(appName+` run "<task>"`, "one agent path — forage→work→return"))
+	b.WriteString(row(appName+` flow "<task>"`, "governance graph; pauses at actor≠verifier gate"))
+	b.WriteString(row(appName+` hive "<task>"`, "decompose→work→converge worker swarm"))
+	b.WriteString(row(appName+" route <cap>", "show the provider/model a capability resolves to"))
+	b.WriteString("\n" + h("KNOWLEDGE (the Comb)") + "\n")
+	b.WriteString(row(appName+" km <sub>", "put|link|retrieve|traverse|cosign|stats"))
+	b.WriteString(row(appName+" distill-export", "certified Comb record → mlx-lm corpus"))
+	b.WriteString("\n" + h("GOVERNANCE & AGENTS") + "\n")
+	b.WriteString(row(appName+" agent <sub>", `list | run <name> "<task>"`))
+	b.WriteString(row(appName+" autonomy <sub>", "status | gate | observe (per-domain rung)"))
+	b.WriteString(row(appName+" secret <sub>", "check <ref> | scan <file>"))
+	b.WriteString(row(appName+" verify-guard", "independent-verifier gate (actor≠verifier)"))
+	b.WriteString("\n" + h("CAPABILITIES") + "\n")
+	b.WriteString("  default-quality · cheap-classification · long-context\n")
+	b.WriteString("  tool-use-heavy · vision\n\n")
+	b.WriteString(paint(cDim, "MORE  ") + appName + " <command> --help  ·  docs: https://github.com/agix-ai/agix-aos\n")
+	fmt.Fprint(w, b.String())
+}
 
-usage:
-  agix-core version
-  agix-core route <capability>
-  agix-core run "<task>" [--provider mock|anthropic|openai|gemini|local] [--capability <cap>] [--report-home <gateway-url>]
-  agix-core flow "<task>" [--gate=approve|reject] [--provider mock]
-  agix-core hive "<task>" [--workers N] [--queen ID] [--worker-models ID,…] [--verifier ID]
-  agix-core agent list [--dir agents] [--public-only]
-  agix-core agent run <name> "<task>" [--dir agents] [--provider mock] [--public-only]
-  agix-core km put|link|retrieve|traverse|cosign|stats [--db PATH] …
-  agix-core distill-export [--db PATH] [--branch software] [--out DIR] [--min-trust 0.9]
-  agix-core autonomy status | gate <domain> <rung> | observe <domain> accept|reject
-  agix-core secret check <ref> | scan <file>
-  agix-core verify-guard [--review <path>] [--repo owner/repo] [--pr N] [--allowlist <path>] [--risk <path>]
-
-capabilities: default-quality, cheap-classification, long-context, tool-use-heavy, vision
-`)
+// spaces returns n spaces (small helper to keep usageTo readable).
+func spaces(n int) string {
+	if n <= 0 {
+		return ""
+	}
+	return strings.Repeat(" ", n)
 }
 
 func cmdRoute(args []string) int {
@@ -117,7 +165,8 @@ func cmdRoute(args []string) int {
 		fmt.Fprintln(os.Stderr, err)
 		return 1
 	}
-	fmt.Printf("%s -> %s/%s\n", route.Capability, route.Provider, route.Model)
+	// match the house `label:  value` style used by run/flow/km/secret.
+	fmt.Printf("route:  %s → %s/%s\n", route.Capability, route.Provider, route.Model)
 	return 0
 }
 
@@ -128,7 +177,7 @@ func cmdRun(args []string) int {
 		return 2
 	}
 	if task == "" {
-		fmt.Fprintln(os.Stderr, `run: need a task, e.g. agix-core run "hello hive"`)
+		fmt.Fprintln(os.Stderr, `run: need a task, e.g. agix run "hello hive"`)
 		return 2
 	}
 
@@ -285,7 +334,7 @@ func cmdFlow(args []string) int {
 		return 2
 	}
 	if task == "" {
-		fmt.Fprintln(os.Stderr, `flow: need a task, e.g. agix-core flow "ship a login page" --gate=approve`)
+		fmt.Fprintln(os.Stderr, `flow: need a task, e.g. agix flow "ship a login page" --gate=approve`)
 		return 2
 	}
 	approve := true
@@ -324,7 +373,7 @@ func cmdFlow(args []string) int {
 	fmt.Printf("task:    %s\n", res.Task)
 	fmt.Printf("lease:   %s\n", res.LeaseID)
 	fmt.Printf("gate:    paused for %s → resumed by curator-1 → %s\n", res.Interrupted, verdictWord(res.Approved))
-	fmt.Printf("outcome: %s\n", res.Outcome)
+	fmt.Printf("outcome: %s\n", flowOutcomeWord(res.Outcome))
 	if res.OutputText != "" {
 		fmt.Printf("output:  %s\n", res.OutputText)
 	}
@@ -360,6 +409,18 @@ func verdictWord(approved bool) string {
 		return "approve"
 	}
 	return "reject"
+}
+
+// flowOutcomeWord turns the internal graph token into a human phrase for the CLI.
+func flowOutcomeWord(outcome string) string {
+	switch outcome {
+	case "fed":
+		return "approved — fed forward"
+	case "remediated":
+		return "rejected — sent for remediation"
+	default:
+		return outcome
+	}
 }
 
 func ratifySummary(n int, verdict string) string {

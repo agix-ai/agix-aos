@@ -38,7 +38,7 @@ func (b *KeychainBackend) service() string {
 }
 
 // Resolve looks the secret up in the OS keychain. The child process inherits the
-// current environment (so it is hive-scoped via CLOUDSDK_CONFIG / login session).
+// current environment (so it is hive-scoped via the cloud login session).
 func (b *KeychainBackend) Resolve(ctx context.Context, ref Ref) (string, error) {
 	account := b.Table.name(ref)
 	var cmd *exec.Cmd
@@ -57,27 +57,6 @@ func (b *KeychainBackend) Resolve(ctx context.Context, ref Ref) (string, error) 
 	return runSecretCmd(cmd, "keychain", ref)
 }
 
-// GSMBackend resolves secrets from Google Secret Manager via the gcloud CLI. This
-// is the internal-testing backend: the operator keeps the real Anthropic key in
-// GSM. The child process inherits the current environment, so CLOUDSDK_CONFIG (a
-// per-hive gcloud config dir) scopes which account and project credentials apply.
-type GSMBackend struct {
-	// Project is the Google Cloud project the secret lives in.
-	Project string
-	// Table maps a logical Ref to the Secret Manager secret id.
-	Table RefTable
-}
-
-// Resolve fetches the latest version of the named secret. On a non-zero gcloud
-// exit it returns a typed ResolveError that echoes neither the secret nor the
-// full command line — only the backend, ref, and a short diagnostic.
-func (b *GSMBackend) Resolve(ctx context.Context, ref Ref) (string, error) {
-	name := b.Table.name(ref)
-	cmd := exec.CommandContext(ctx, "gcloud", "secrets", "versions", "access", "latest",
-		"--secret="+name, "--project="+b.Project)
-	cmd.Env = os.Environ() // inherit the (hive-scoped) process env explicitly
-	return runSecretCmd(cmd, "gsm", ref)
-}
 
 // runSecretCmd runs a backend command whose stdout is the raw secret. It returns
 // the trimmed value on success. On failure it returns a scrubbed ResolveError:

@@ -310,7 +310,7 @@ function runSecretChecks(files: SrcFile[]): Finding[] {
 // HEURISTIC, offline: reads the pre-read package.json contents, never the network.
 
 const SENSITIVE_PACKAGE_HINTS =
-  /(auth|crypto|jsonwebtoken|jwt|bcrypt|passport|oauth|axios|node-fetch|got|request|exec|shell|serialize|yaml|lodash|googleapis|aws-sdk|@aws-sdk|firebase|nodemailer)/i;
+  /(auth|crypto|jsonwebtoken|jwt|bcrypt|passport|oauth|axios|node-fetch|got|request|exec|shell|serialize|yaml|lodash|googleapis|aws-sdk|@aws-sdk|firebase|nodemailer)/i; // bleed-ok: npm package names in a security-scan pattern, not the operator's stack
 
 const HIGH_COUNT_THRESHOLD = 40;
 

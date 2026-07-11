@@ -525,7 +525,7 @@ function composeReport(a: {
   }
   lines.push("");
   lines.push(
-    "> The release engineer is a **proposer**. It reports readiness and verifies the landing; it never runs `gcloud`/`firebase deploy`, never merges, never force-pushes. The CI/CD pipeline is the only path to production.",
+    "> The release engineer is a **proposer**. It reports readiness and verifies the landing; it never runs `cloud secret CLI`/`deploy`, never merges, never force-pushes. The CI/CD pipeline is the only path to production.",
   );
   lines.push("");
 

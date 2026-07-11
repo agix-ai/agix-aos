@@ -18,7 +18,7 @@
     "secrets": ["anthropic-api-key"],
     "read": ["repo/", "plans/", "notes/", "packs/refactor/"],
     "write": ["plans/refactor/", "notes/refactor/"],
-    "deny": ["git push", "git commit", "gh pr merge", "gcloud secrets versions access"]
+    "deny": ["git push", "git commit", "gh pr merge", "cloud secret access"]
   },
   "config": [
     { "name": "ANTHROPIC_API_KEY", "required": false }

@@ -18,7 +18,7 @@
     "read": ["repo/", "agents/tester/", "wiki/", "architecture/"],
     "write": ["wiki/tester/"],
     "exec": ["bun test", "bun run test", "go test", "go vet", "go build", "npm test", "npm run test", "pnpm test", "pnpm run test", "yarn test", "pytest", "python -m pytest"],
-    "deny": ["git push", "git commit", "gh pr merge", "gh release", "gcloud secrets versions access"]
+    "deny": ["git push", "git commit", "gh pr merge", "gh release", "cloud secret access"]
   },
   "config": [
     { "name": "ANTHROPIC_API_KEY", "required": true },

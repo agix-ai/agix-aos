@@ -21,8 +21,8 @@ import (
 // hive through fleet.Runner, so the CLI dogfoods the exact contract + runner the
 // fleet port is built on.
 //
-//	agix-core agent list [--dir agents] [--public-only]
-//	agix-core agent run <name> "<task>" [--dir agents] [--provider mock] [--public-only]
+//	agix agent list [--dir agents] [--public-only]
+//	agix agent run <name> "<task>" [--dir agents] [--provider mock] [--public-only]
 //
 // Zero-cost and offline on the default mock provider (no key, no network).
 func cmdAgent(args []string) int {
@@ -43,11 +43,11 @@ func cmdAgent(args []string) int {
 }
 
 func agentUsage() {
-	fmt.Fprint(os.Stderr, `agix-core agent — run a reborn agent (manifest + governed hive)
+	fmt.Fprint(os.Stderr, `agix agent — run a reborn agent (manifest + governed hive)
 
 usage:
-  agix-core agent list [--dir agents] [--public-only]
-  agix-core agent run <name> "<task>" [--dir agents] [--provider mock|anthropic|openai|gemini|local]
+  agix agent list [--dir agents] [--public-only]
+  agix agent run <name> "<task>" [--dir agents] [--provider mock|anthropic|openai|gemini|local]
       [--repoRoot <dir>] [--public-only] [--json] [--engine] [--attest] [--comb <db>]
 
 An agent is a manifest (agent.json — governance metadata this binary reads) plus,
@@ -66,7 +66,7 @@ and never re-enters Bun. Flags:
   --attest   turn on the flywheel WRITE side: record the run's certified artifact
              into the Comb (~/.agix/km.db) under the attestation policy — an
              externally grounded verdict auto-attests; a judgment-only verdict is
-             held pending a human co-sign (agix-core km cosign). Auto-attestation
+             held pending a human co-sign (agix km cosign). Auto-attestation
              requires the run's verifier actor to be on AGIX_KM_VERIFIERS.
   --comb DB  attest into the store at DB (implies --attest).
 `)
@@ -130,7 +130,7 @@ func cmdAgentRun(args []string) int {
 	}
 	dir, provider, publicOnly, jsonOut, engineOnly := f.dir, f.provider, f.publicOnly, f.jsonOut, f.engineOnly
 	if len(f.rest) < 1 {
-		fmt.Fprintln(os.Stderr, `agent run: need an agent name, e.g. agix-core agent run investigator "the build is red"`)
+		fmt.Fprintln(os.Stderr, `agent run: need an agent name, e.g. agix agent run investigator "the build is red"`)
 		return 2
 	}
 	// Fail loud on a supplied-but-missing --repoRoot before anything runs (the

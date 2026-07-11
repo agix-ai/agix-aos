@@ -2,12 +2,12 @@
 // (core/kmstore). It lets the runtime, agents, and a human drive the hive's
 // durable knowledge:
 //
-//	agix-core km put      --content "…" [--author A --verifier V --trust 0.9 --branch B --id X --ratified]
-//	agix-core km link     --src X --type depends-on --dst Y [--author A --verifier V --trust 0.9]
-//	agix-core km retrieve --query "…" [--k 5 --attested-only]
-//	agix-core km traverse --seed X --type depends-on [--hops 2 --attested-only]
-//	agix-core km reembed  [--dry-run --force]
-//	agix-core km stats
+//	agix km put      --content "…" [--author A --verifier V --trust 0.9 --branch B --id X --ratified]
+//	agix km link     --src X --type depends-on --dst Y [--author A --verifier V --trust 0.9]
+//	agix km retrieve --query "…" [--k 5 --attested-only]
+//	agix km traverse --seed X --type depends-on [--hops 2 --attested-only]
+//	agix km reembed  [--dry-run --force]
+//	agix km stats
 //
 // All subcommands take --db (default ~/.agix/km.db). Content/queries are turned
 // into vectors by the env-selected embedder (kmstore.NewEmbedderFromEnv): the
@@ -86,16 +86,16 @@ func cmdKM(args []string) int {
 }
 
 func kmUsage() {
-	fmt.Fprint(os.Stderr, `agix-core km — the production provenance-gated KM store
+	fmt.Fprint(os.Stderr, `agix km — the provenance-gated knowledge store (the Comb)
 
 usage:
-  agix-core km put      --content "…" [--author A --verifier V --trust 0.9 --branch B --id X --ratified]
-  agix-core km link     --src X --type depends-on --dst Y [--author A --verifier V --trust 0.9]
-  agix-core km retrieve --query "…" [--k 5 --attested-only]
-  agix-core km traverse --seed X --type depends-on [--hops 2 --attested-only]
-  agix-core km cosign   --id X --verifier V [--trust 1.0]
-  agix-core km reembed  [--dry-run --force]
-  agix-core km stats
+  agix km put      --content "…" [--author A --verifier V --trust 0.9 --branch B --id X --ratified]
+  agix km link     --src X --type depends-on --dst Y [--author A --verifier V --trust 0.9]
+  agix km retrieve --query "…" [--k 5 --attested-only]
+  agix km traverse --seed X --type depends-on [--hops 2 --attested-only]
+  agix km cosign   --id X --verifier V [--trust 1.0]
+  agix km reembed  [--dry-run --force]
+  agix km stats
 
   all subcommands accept --db PATH (default ~/.agix/km.db)
 
@@ -111,7 +111,7 @@ and distinct from the leaf's author, exactly like a write.
 
 the roster is the allowlist of principals allowed to attest; seed it out of band
 via AGIX_KM_VERIFIERS (comma-separated actor refs), e.g.
-  AGIX_KM_VERIFIERS="agix/worker/verifier-1" agix-core km put --verifier agix/worker/verifier-1 ...
+  AGIX_KM_VERIFIERS="agix/worker/verifier-1" agix km put --verifier agix/worker/verifier-1 ...
 a --verifier NOT on the roster stores the write UN-attested (it cannot forge an
 attestation), which is the governed-hive rule.
 

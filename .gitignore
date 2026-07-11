@@ -31,7 +31,7 @@ venv/
 # Claude Code harness — subagent worktrees, local settings
 .claude/
 
-# Firebase App Hosting adapter bundle output
+# the hosting platform adapter bundle output
 /.apphosting/
 
 # Agix runtime artifacts auto-provisioned into a dev checkout

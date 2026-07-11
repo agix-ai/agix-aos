@@ -3,7 +3,7 @@
 // This is the BEHAVIOR layer. Identity, trust=boundary (caste=drone), model
 // tiering (queen=sonnet for quality summaries + drafts, worker=haiku for cheap
 // classification, verifier=haiku), the guard-bee boundary (writes only
-// wiki/secretary/, denies git push/commit + gh pr merge + gcloud secrets), and
+// wiki/secretary/, denies git push/commit + gh pr merge + cloud secret CLI secrets), and
 // public=true live in the sibling agent.json. The Secretary's core intelligence —
 // triaging the inbox into per-thread classifications, summarizing what matters,
 // and drafting replies in the operator's voice — runs as GOVERNED hive passes: a

@@ -40,9 +40,9 @@
       "git merge",
       "gh pr merge",
       "gh pr merge --admin",
-      "gcloud run deploy",
-      "gcloud builds submit",
-      "gcloud secrets versions access",
+      "cloud run deploy",
+      "cloud build submit",
+      "cloud secret access",
       ".github/workflows/"
     ]
   },
