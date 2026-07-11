@@ -30,7 +30,7 @@ discipline, using the same models your CLI already calls.
 **See it move** — the branded CLI, a governed flow that pauses at the actor≠verifier gate, and
 capability routing:
 
-![Agix AOS terminal demo](.github/assets/agix-demo.svg)
+![Agix AOS terminal demo](.github/assets/agix-demo.gif)
 
 Install in one line (macOS), then run a governed multi-agent flow:
 
@@ -100,6 +100,47 @@ agix init --defaults    # non-interactive: provision everything with placeholder
 If neither Claude Code nor Codex is installed, onboarding still completes — it just asks
 you to install a CLI agent (or set an API key) before agents make a model call.
 
+## Connect your model
+
+Agix is the operating layer around a model, not a model itself. You point it at whatever you
+already use, and you can mix these freely:
+
+**1. The coding CLI you already have (default, no API key).** The agent fleet
+(`agix agent run …`) runs through your installed **Claude Code** or **OpenAI Codex** CLI.
+Agix auto-detects it on first run — nothing to configure. Calls count against that account's
+usage, not a separate key.
+
+**2. Your own API key (Anthropic, OpenAI, or Gemini).** For the direct provider path, set a
+key one of two ways, then pass `--provider`:
+
+```sh
+# option A — an environment variable
+export ANTHROPIC_API_KEY=...        # or OPENAI_API_KEY / GEMINI_API_KEY
+
+# option B — a per-provider file under your config dir (keeps it out of shell history)
+mkdir -p ~/.config/agix
+printf '%s\n' "your-key" > ~/.config/agix/anthropic.env   # or openai.env / gemini.env
+
+agix run "summarize this repo" --provider anthropic        # or openai / gemini
+```
+
+**3. A local model (Ollama), $0.** Point Agix at a model you run yourself — nothing leaves
+your machine:
+
+```sh
+ollama pull qwen3.6:35b-a3b                                 # any model you like
+AGIX_LOCAL_MODEL=qwen3.6:35b-a3b agix run "..." --provider local
+```
+
+`--provider mock` is a deterministic, zero-network dry run for trying commands out.
+
+| Provider | Enable it with | Key? | Cost |
+|---|---|---|---|
+| Claude Code / Codex *(default)* | installed CLI, auto-detected | no | your CLI account |
+| Anthropic · OpenAI · Gemini | `--provider <p>` + key (env or `~/.config/agix/<p>.env`) | yes | provider billing |
+| Local (Ollama) | `--provider local` + `AGIX_LOCAL_MODEL` | no | **$0** |
+| mock | `--provider mock` | no | $0 (dry run) |
+
 ## The agent fleet
 
 Agix ships a fleet of generic, basic-tier agents — a **team**, not a single assistant.
@@ -131,7 +172,9 @@ that certifies it** (actor ≠ verifier). See [`AGENTS.md`](AGENTS.md).
 agix                              # interactive mentor + slash commands (the default entry point)
 agix agent list                   # list your agents
 agix agent run <name> [flags]     # run an agent locally
-agix agent new <name>             # scaffold a new working agent from the template
+agix agent new <name>             # scaffold a new agent (interactive wizard on a TTY)
+agix agent edit <name>            # open its manifest in $EDITOR, then re-validate
+agix agent validate <name>        # schema-check an agent against the runner's contract
 agix swarm --worker <name> --n 3  # fan tasks out to a serving worker over the bus
 agix soul show                    # print your instance soul (it grows with you)
 agix soul note "<learning>"       # append a dated learning to the soul

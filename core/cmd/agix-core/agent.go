@@ -31,10 +31,16 @@ func cmdAgent(args []string) int {
 		return 2
 	}
 	switch args[0] {
+	case "new":
+		return cmdAgentNew(args[1:])
 	case "list":
 		return cmdAgentList(args[1:])
 	case "run":
 		return cmdAgentRun(args[1:])
+	case "edit":
+		return cmdAgentEdit(args[1:])
+	case "validate":
+		return cmdAgentValidate(args[1:])
 	default:
 		fmt.Fprintf(os.Stderr, "agent: unknown subcommand %q\n", args[0])
 		agentUsage()
@@ -43,10 +49,13 @@ func cmdAgent(args []string) int {
 }
 
 func agentUsage() {
-	fmt.Fprint(os.Stderr, `agix agent — run a reborn agent (manifest + governed hive)
+	fmt.Fprint(os.Stderr, `agix agent — author + run agents (manifest + governed hive)
 
 usage:
+  agix agent new <name> [--dir agents] [--defaults] [--role R] [--trust T] [--tools a,b]
   agix agent list [--dir agents] [--public-only]
+  agix agent edit <name> [--dir agents]        # open the manifest in $EDITOR, re-validate
+  agix agent validate <name> [--dir agents]    # schema-check against the runner's contract
   agix agent run <name> "<task>" [--dir agents] [--provider mock|anthropic|openai|gemini|local]
       [--repoRoot <dir>] [--public-only] [--json] [--engine] [--attest] [--comb <db>]
 
