@@ -30,7 +30,7 @@ class AgixAos < Formula
   # tap copy of this formula is what `brew` verifies against, and it is authoritative.)
   url "https://github.com/agix-ai/agix-aos/releases/download/v0.1.1/agix-aos-0.1.1.tar.gz"
   # version is scanned from the URL (0.1.1) — an explicit `version` line is redundant (brew audit).
-  sha256 "dc055d6afbcb14e6b05420f9415ade4e4c981f83aa126f543799ec68769b1511"
+  sha256 "ff2e4204a4a4f97613547a12d99d4aee64639b795c33e8a285d45361434811c6"
   license "Apache-2.0"
 
   # Build-time toolchains: Go compiles the `agix-core` CLI + the Go core; Rust compiles

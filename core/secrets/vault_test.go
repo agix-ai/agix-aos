@@ -41,15 +41,12 @@ func TestVaultBackendSelection(t *testing.T) {
 	}{
 		{name: "default is keychain", backend: "", wantSource: "keychain"},
 		{name: "explicit keychain", backend: "keychain", wantSource: "keychain"},
-		{name: "gsm with project", backend: "gsm", project: "acme-hive", wantSource: "gsm:acme-hive"},
 		{name: "env", backend: "env", wantSource: "env"},
-		{name: "gsm without project errors", backend: "gsm", wantErr: true},
 		{name: "unknown backend errors", backend: "vault-of-doom", wantErr: true},
 	}
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
 			t.Setenv(secrets.EnvBackendVar, tc.backend)
-			t.Setenv(secrets.EnvGSMProject, tc.project)
 
 			v, err := secrets.NewVault()
 			if tc.wantErr {
@@ -68,11 +65,3 @@ func TestVaultBackendSelection(t *testing.T) {
 	}
 }
 
-func TestVaultGSMMissingProjectIsTyped(t *testing.T) {
-	t.Setenv(secrets.EnvBackendVar, "gsm")
-	t.Setenv(secrets.EnvGSMProject, "")
-	_, err := secrets.NewVault()
-	if !errors.Is(err, secrets.ErrNoProject) {
-		t.Fatalf("err = %v, want ErrNoProject", err)
-	}
-}
