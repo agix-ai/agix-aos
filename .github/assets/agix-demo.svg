@@ -1,0 +1,26 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="760" height="356" viewBox="0 0 760 356" font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, monospace" font-size="14.5">
+  <rect x="0" y="0" width="760" height="356" rx="10" fill="#14181f"/>
+  <rect x="0" y="0" width="760" height="34" rx="10" fill="#1c222b"/>
+  <rect x="0" y="24" width="760" height="10" fill="#1c222b"/>
+  <circle cx="20" cy="17" r="6" fill="#ec6a5e"/>
+  <circle cx="40" cy="17" r="6" fill="#f4bf4f"/>
+  <circle cx="60" cy="17" r="6" fill="#61c554"/>
+  <text x="380" y="21" fill="#5a6472" text-anchor="middle" font-size="12">agix — the agentic operating system</text>
+
+  <g xml:space="preserve">
+    <text x="22" y="66"><tspan fill="#61c554">$</tspan> <tspan fill="#c9d1d9">agix</tspan></text>
+    <text x="22" y="90"  fill="#e5a53f" font-weight="bold">  ⬡  ▄▀█ █▀▀ █ ▀▄▀</text>
+    <text x="22" y="112" fill="#e5a53f" font-weight="bold">     █▀█ █▄█ █ █ █  <tspan fill="#7d8896" font-weight="normal">the agentic operating system</tspan></text>
+    <text x="22" y="134" fill="#c9954a">     agix 0.1.1 · beta</text>
+
+    <text x="22" y="172"><tspan fill="#61c554">$</tspan> <tspan fill="#c9d1d9">agix flow "add a login page" --gate=approve</tspan></text>
+    <text x="22" y="194" fill="#8b95a3">task:    add a login page</text>
+    <text x="22" y="216" fill="#8b95a3">gate:    paused for ratify <tspan fill="#e5a53f">→</tspan> resumed by curator-1 <tspan fill="#e5a53f">→</tspan> approve</text>
+    <text x="22" y="238" fill="#61c554">outcome: approved — fed forward</text>
+
+    <text x="22" y="276"><tspan fill="#61c554">$</tspan> <tspan fill="#c9d1d9">agix route default-quality</tspan></text>
+    <text x="22" y="298" fill="#8b95a3">route:  default-quality <tspan fill="#e5a53f">→</tspan> anthropic/claude-sonnet-5</text>
+
+    <text x="22" y="336" fill="#5a6472">the agent that does the work never verifies it. every action traces to a person.</text>
+  </g>
+</svg>

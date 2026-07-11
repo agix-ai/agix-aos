@@ -2,7 +2,7 @@
 
 An operating system for a team of AI agents you own. Scale your AI organically.
 
-> ⚠️ **Agix AOS v0.1.0 is in beta.** It's early and actively evolving — expect rough edges
+> ⚠️ **Agix AOS v0.1.1 is in beta.** It's early and actively evolving — expect rough edges
 > and breaking changes between releases. [Issues and feedback](../../issues) are very welcome.
 
 [![Website](https://img.shields.io/badge/website-agix--ai.io-1f2937)](https://agix-ai.io)
@@ -26,6 +26,22 @@ discipline, using the same models your CLI already calls.
 > local bus, scaffold files). Its value is **cheaper multi-agent coordination and
 > orchestration discipline**, not smarter answers: it uses the same models your CLI already
 > calls.
+
+**See it move** — the branded CLI, a governed flow that pauses at the actor≠verifier gate, and
+capability routing:
+
+![Agix AOS terminal demo](.github/assets/agix-demo.svg)
+
+Install in one line (macOS), then run a governed multi-agent flow:
+
+```sh
+brew tap agix-ai/agix && brew trust agix-ai/agix && brew install agix-aos
+agix flow "add a login page" --gate=approve
+```
+
+**Why a team instead of one agent?** Same models, but coordinated and *governed*: the agent
+that does the work never verifies it, every action traces back to a person, and what the hive
+learns lands in a knowledge graph you own. Not a smarter model, a better operating layer around it.
 
 |  |  |  |  |
 |---|---|---|---|
