@@ -8,7 +8,7 @@ import (
 	"github.com/agix-ai/agix/core/secrets"
 )
 
-// fakeResolver is an in-memory SourcedResolver — no keychain, no gcloud, no
+// fakeResolver is an in-memory SourcedResolver — no keychain, no cloud secret CLI, no
 // network. Broker/vault-selection tests use it so nothing hits the OS store.
 type fakeResolver struct {
 	vals  map[secrets.Ref]string

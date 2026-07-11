@@ -1,7 +1,7 @@
 // Tests for the provider-key resolver seam: the dev env fallback (back-compat),
 // the guard-bee vault path (precedence + audit + typed errors), and the
 // invariant that the mock provider needs no key resolution at all. No test hits a
-// real keychain or gcloud — the vault is always an injected in-memory fake.
+// real keychain or cloud secret CLI — the vault is always an injected in-memory fake.
 //
 // Copyright 2026 Agix AI LLC. Apache-2.0.
 package keyenv
@@ -18,7 +18,7 @@ import (
 )
 
 // fakeVault is an in-memory vaultResolver. It never shells out, so tests never
-// touch the OS keychain or gcloud.
+// touch the OS keychain or cloud secret CLI.
 type fakeVault struct {
 	values map[secrets.Ref]string
 	err    error

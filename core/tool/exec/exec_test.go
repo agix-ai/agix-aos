@@ -14,7 +14,7 @@ import (
 	exectool "github.com/agix-ai/agix/core/tool/exec"
 )
 
-// fakeVault is an in-memory SourcedResolver — no keychain, no gcloud, no network —
+// fakeVault is an in-memory SourcedResolver — no keychain, no cloud secret CLI, no network —
 // so every guard-bee test runs $0/offline with a fake secret value.
 type fakeVault struct {
 	vals  map[secrets.Ref]string

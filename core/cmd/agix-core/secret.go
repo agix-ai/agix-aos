@@ -1,7 +1,7 @@
 // secret — the guard-bee CLI surface. It exposes ONLY non-revealing operations:
 //
-//	agix-core secret check <ref>   presence probe → PRESENT (backend=…) | ABSENT
-//	agix-core secret scan  <file>  run the egress scanner over a file, redacted
+//	agix secret check <ref>   presence probe → PRESENT (backend=…) | ABSENT
+//	agix secret scan  <file>  run the egress scanner over a file, redacted
 //
 // There is deliberately no `secret get` that prints a raw value — the guard bee
 // never casually exposes secrets. `check` resolves through the configured Vault
@@ -40,22 +40,21 @@ func cmdSecret(args []string) int {
 }
 
 func secretUsage() {
-	fmt.Fprint(os.Stderr, `agix-core secret — the guard bee (least-privilege secret access)
+	fmt.Fprint(os.Stderr, `agix secret — the guard bee (least-privilege secret access)
 
 usage:
-  agix-core secret check <ref>    presence probe (never prints the value)
-  agix-core secret scan  <file>   egress-scan a file for secret shapes (redacted)
+  agix secret check <ref>    presence probe (never prints the value)
+  agix secret scan  <file>   egress-scan a file for secret shapes (redacted)
 
 backend selection (env):
-  AGIX_SECRET_BACKEND = keychain (default) | gsm | env
-  AGIX_GSM_PROJECT    = <project>   (required when backend=gsm)
+  AGIX_SECRET_BACKEND = keychain (default) | env
 `)
 }
 
 // secretCheck resolves a ref through the Vault and reports PRESENT/ABSENT only.
 func secretCheck(args []string) int {
 	if len(args) < 1 {
-		fmt.Fprintln(os.Stderr, "secret check: need a ref, e.g. agix-core secret check anthropic-api-key")
+		fmt.Fprintln(os.Stderr, "secret check: need a ref, e.g. agix secret check anthropic-api-key")
 		return 2
 	}
 	vault, err := secrets.NewVault()
@@ -92,7 +91,11 @@ func secretScan(args []string) int {
 	}
 	sc := secrets.NewEgressScanner()
 	findings := sc.Scan(string(data))
-	fmt.Printf("scan: %s  (%d finding(s))\n", args[0], len(findings))
+	noun := "findings"
+	if len(findings) == 1 {
+		noun = "finding"
+	}
+	fmt.Printf("scan: %s  (%d %s)\n", args[0], len(findings), noun)
 	for i, f := range findings {
 		fmt.Printf("  %d. %-18s bytes %d-%d\n", i+1, f.Kind, f.Start, f.End)
 	}

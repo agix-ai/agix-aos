@@ -17,7 +17,7 @@ import (
 // public will use. It prints the guaranteed-distinct verifier actor (the
 // actor≠verifier proof), the verdict, the answer, and the cost rollup.
 //
-//	agix-core hive "<task>" [--provider mock] [--workers N] [--hive NAME]
+//	agix hive "<task>" [--provider mock] [--workers N] [--hive NAME]
 //	  [--queen ID] [--worker-models ID1,ID2,...] [--verifier ID]
 //
 // Zero-cost and offline on the default mock provider (no key, no network).
@@ -28,7 +28,7 @@ func RunHiveCLI(args []string) int {
 		return 2
 	}
 	if a.task == "" {
-		fmt.Fprintln(os.Stderr, `hive: need a task, e.g. agix-core hive "add a login page" --workers 3`)
+		fmt.Fprintln(os.Stderr, `hive: need a task, e.g. agix hive "add a login page" --workers 3`)
 		return 2
 	}
 

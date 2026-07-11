@@ -8,6 +8,27 @@ All notable changes to Agix AOS are documented here. This project adheres to
 > **retired Node runtime** and are kept for history; they are not a newer version of the
 > current codebase. Public releases start fresh at `0.1.0` in the `agix-ai/agix-aos` repo.
 
+## [0.1.1] — 2026-07-10 — branded CLI + provider-neutral release
+
+An out-of-band patch: v0.1.0 shipped with pre-rebrand `agix-core` naming and internal
+posture in the public tree. This makes the CLI present cleanly and keeps the OSS release
+provider-neutral.
+
+### Changed
+- **CLI presents as `agix`** everywhere (was `agix-core` in version/help/usage): honey ⬡ AGIX
+  logo + TTY-aware color; bare `agix`/`help`/`-h` show branded sectioned help on stdout;
+  `agix <verb> --help` works on every verb; `--version` stays a parseable `agix 0.1.1`.
+- **verify-guard**: a non-risk PR passes without an allow-list; humans get a plain error (the
+  `::error::` annotation is emitted only under GitHub Actions).
+- **State dir** `.agix-core/` → `.agix/` (no pre-rebrand name in run output).
+- **Homebrew formula** passes `brew style` + `brew audit` in a tap; caveats fixed.
+
+### Added
+- **public-warden** — a deploy-time genericizer + hard bleed gate (`scripts/release/`) that keeps
+  internal cloud / secret-manager / deploy references out of the OSS tree so the release stays
+  provider-neutral. A cloud-specific secret backend is not shipped in the public build.
+- **AOS testbench** (`research/aos-testbench/`) + nightlies guarding `main` between releases.
+
 ## [0.1.0] — 2026-07-09 — the reborn baseline
 
 The first public release of the reborn Agix AOS. The old single-runtime Node stack was

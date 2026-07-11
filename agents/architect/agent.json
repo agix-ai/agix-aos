@@ -17,7 +17,7 @@
     "secrets": ["anthropic-api-key"],
     "read": ["wiki/director/specs/", "wiki/research/", "docs/framework/", "architecture/", "clients/", "agents/architect/"],
     "write": ["wiki/director/specs/", "clients/"],
-    "deny": ["git push", "git commit", "gh pr merge", "gcloud secrets versions access"]
+    "deny": ["git push", "git commit", "gh pr merge", "cloud secret access"]
   },
   "config": [
     { "name": "ANTHROPIC_API_KEY", "required": true }

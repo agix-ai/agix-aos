@@ -14,8 +14,8 @@ import (
 )
 
 // defaultKMDBPath is where --km opens the Comb when --km-db is not given. It sits
-// beside the ledger under .agix-core so a repo-local run finds its own honey.
-const defaultKMDBPath = ".agix-core/km.db"
+// beside the ledger under .agix so a repo-local run finds its own honey.
+const defaultKMDBPath = ".agix/km.db"
 
 // swarmKMk is how many attested hits the Comb retriever merges per subtask.
 const swarmKMk = 5
@@ -26,7 +26,7 @@ const swarmKMk = 5
 // (--json) or a human summary. It parses its own flags and returns an exit code,
 // so main.go wires it with a single line and this file carries no other coupling.
 //
-//	agix-core swarm "<task>" [--provider mock] [--workers N] [--concurrency N] [--hive agix]
+//	agix swarm "<task>" [--provider mock] [--workers N] [--concurrency N] [--hive agix]
 //	  [--queen-model ID] [--worker-models ID1,ID2,...] [--verify-model ID]
 //	  [--max-tokens N] [--synth-max-tokens N] [--km [--km-db PATH]] [--json]
 //
@@ -41,7 +41,7 @@ func RunSwarmCLI(args []string) int {
 		return 2
 	}
 	if a.task == "" {
-		fmt.Fprintln(os.Stderr, `swarm: need a task, e.g. agix-core swarm "add a login page"`)
+		fmt.Fprintln(os.Stderr, `swarm: need a task, e.g. agix swarm "add a login page"`)
 		return 2
 	}
 

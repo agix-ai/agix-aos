@@ -19,7 +19,7 @@
     "write": ["wiki/ci-warden/reports/"],
     "exec": ["gh run list", "gh run view", "gh api", "gh workflow list", "gh cache list", "gh billing"],
     "exec_env": { "GH_TOKEN": "gh-token" },
-    "deny": [".github/workflows/", "services/", "apps/", "lib/", "bin/", "git push", "gh pr merge", "gh workflow run", "gh run rerun", "gh run cancel", "gcloud run deploy"]
+    "deny": [".github/workflows/", "services/", "apps/", "lib/", "bin/", "git push", "gh pr merge", "gh workflow run", "gh run rerun", "gh run cancel", "cloud run deploy"]
   },
   "config": [
     { "name": "GH_TOKEN", "required": false },

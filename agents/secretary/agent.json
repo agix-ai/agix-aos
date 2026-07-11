@@ -19,7 +19,7 @@
     "secrets": ["anthropic-api-key", "smtp-app-password", "workspace-gmail"],
     "read": ["agents/secretary/", "wiki/secretary/"],
     "write": ["wiki/secretary/"],
-    "deny": ["git push", "git commit", "gh pr merge", "gcloud secrets versions access"]
+    "deny": ["git push", "git commit", "gh pr merge", "cloud secret access"]
   },
   "config": [
     { "name": "ANTHROPIC_API_KEY", "required": true },

@@ -39,7 +39,7 @@ const subprocessRole = "subprocess-env"
 // Broker gates access to the Vault behind a Policy and records every decision.
 type Broker struct {
 	// Vault resolves granted refs. Real wiring passes a *Vault; tests pass a fake
-	// SourcedResolver so no keychain/gcloud call is made.
+	// SourcedResolver so no keychain/cloud secret CLI call is made.
 	Vault SourcedResolver
 	// Policy is the role→refs allowlist (deny by default).
 	Policy Policy

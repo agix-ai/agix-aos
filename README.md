@@ -33,10 +33,12 @@ discipline, using the same models your CLI already calls.
 
 ## Install
 
-Agix AOS installs from a Homebrew tap:
+Agix AOS installs from a Homebrew tap. A third-party tap requires a one-time `brew trust`
+(Homebrew's acknowledgement that a formula comes from outside its official repos):
 
 ```sh
 brew tap agix-ai/agix
+brew trust agix-ai/agix       # one-time — required for any third-party tap
 brew install agix-aos
 ```
 
@@ -144,8 +146,8 @@ capability *is* the boundary.
 
 > [!NOTE]
 > **Install only from the official tap.** The only supported install path is
-> `brew tap agix-ai/agix` → `brew install agix-aos`. Don't install Agix from a fork or
-> mirror you don't trust.
+> `brew tap agix-ai/agix` → `brew trust agix-ai/agix` → `brew install agix-aos`. Don't
+> install Agix from a fork or mirror you don't trust.
 >
 > **Agents act on your machine.** Agix is agentic software with real capabilities — its
 > agents read and write a local brain + wiki, scaffold files, run your test suite, and

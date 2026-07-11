@@ -10,7 +10,7 @@
   "boundary": {
     "secrets": [],
     "write": [],
-    "deny": ["git push", "git commit", "gh pr merge", "gcloud secrets versions access", "anthropic", "kagi"]
+    "deny": ["git push", "git commit", "gh pr merge", "cloud secret access", "anthropic", "kagi"]
   },
   "config": [
     { "name": "AGIX_FLEET_STATE_DIR", "required": false }

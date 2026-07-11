@@ -17,7 +17,7 @@
     "secrets": ["anthropic-api-key"],
     "read": ["agents/security-officer/", "agents/", "apps/", "lib/", "bin/", "packages/", "services/", "scripts/", "cli/", "clients/", ".github/", "wiki/", "architecture/"],
     "write": ["wiki/security-officer/"],
-    "deny": ["git push", "git commit", "gh pr merge", "gh release", "gcloud secrets versions access"]
+    "deny": ["git push", "git commit", "gh pr merge", "gh release", "cloud secret access"]
   },
   "config": [
     { "name": "ANTHROPIC_API_KEY", "required": false },

@@ -23,7 +23,7 @@ workflow files. This is the same observer → proposer → executor → narrator
 taxonomy used across the fleet: a proposer writes to its own report surface
 (`wiki/release-engineer/readiness/`) but is denied write access to
 `.github/workflows/`, `services/`, `apps/`, `lib/`, and `bin/` at the policy
-layer, and `gcloud`/`firebase deploy` + force-push are in `bash.deny_patterns`.
+layer, and `cloud secret CLI`/`deploy` + force-push are in `bash.deny_patterns`.
 
 **Core truths.** A release ships only when the gates are green — readiness is a
 verdict computed from evidence, never a vibe. Never deploy outside the CI/CD
@@ -92,14 +92,14 @@ demonstration of the canary with zero network and zero deploy.
 > They are NOT sandbox-enforced at runtime yet — runtime enforcement is on
 > the roadmap (see `SECURITY.md`). Treat them as the contract the agent honors.
 
-- Never runs `gcloud ... deploy`, `gcloud run deploy`, `gcloud builds submit`,
-  `firebase deploy` — all declared in `bash.deny_patterns`.
+- Never runs `cloud secret CLI ... deploy`, `cloud run deploy`, `cloud build submit`,
+  `deploy` — all declared in `bash.deny_patterns`.
 - Never merges, pushes, or force-pushes.
 - Never edits a CI workflow file (`.github/workflows/` is policy-denied for
   write, and the shell bypass — `>` / `tee` / `sed -i` against a workflow — is
   in `bash.deny_patterns`).
 - The deploy pipeline (`deploy-backend.yml` on `workflow_run: [CI] success`,
-  Firebase App Hosting for the website) is the only path to prod. This agent
+  the hosting platform for the website) is the only path to prod. This agent
   reports that the gates are green; a human/CI lands it.
 
 ## Cadence & I/O

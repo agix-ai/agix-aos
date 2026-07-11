@@ -34,8 +34,8 @@
       "git tag",
       "git push",
       "gh release create",
-      "gcloud deploy",
-      "firebase deploy"
+      "cloud secret CLI deploy",
+      "deploy"
     ]
   },
   "config": [

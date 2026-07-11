@@ -3,9 +3,9 @@
 // (issue-label, pr-comment, changelog, dep-merge, release…) and every domain
 // starts at Shadow — nothing acts until it has been earned.
 //
-//	agix-core autonomy status                     # rung per domain (from the ledger file)
-//	agix-core autonomy gate <domain> <rung>       # would an action at <rung> be allowed? (exit 0/3)
-//	agix-core autonomy observe <domain> accept|reject   # apply one outcome, persist, print new rung
+//	agix autonomy status                     # rung per domain (from the ledger file)
+//	agix autonomy gate <domain> <rung>       # would an action at <rung> be allowed? (exit 0/3)
+//	agix autonomy observe <domain> accept|reject   # apply one outcome, persist, print new rung
 //
 // This command owns the DURABILITY seam core/autonomy deliberately leaves out (so
 // that package stays a pure stdlib leaf): it replays the JSONL ledger to seed the

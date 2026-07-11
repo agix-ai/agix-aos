@@ -28,7 +28,7 @@
 //   2. Email DELIVERY — runtime.sendEmail (the ack email, the EXPAND email, the
 //      deploy-alert email). There is no ctx.sendEmail. EXPAND still DRAFTS and
 //      persists the deeper-context note; it just cannot send it.
-//   3. Deploy-health check (CI + App Hosting via git/gh/gcloud) + the STV
+//   3. Deploy-health check (CI + the hosting platform via git/gh/cloud secret CLI) + the STV
 //      telemetry capture — a non-governed side-channel needing shell/network.
 //   4. Git custodian (reaps merged claude/cursor/director branches) — non-governed
 //      git side-channel.
