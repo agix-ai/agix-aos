@@ -175,6 +175,9 @@ agix agent run <name> [flags]     # run an agent locally
 agix agent new <name>             # scaffold a new agent (interactive wizard on a TTY)
 agix agent edit <name>            # open its manifest in $EDITOR, then re-validate
 agix agent validate <name>        # schema-check an agent against the runner's contract
+agix fleet                        # interactive TUI — browse the fleet
+agix debug "<issue>"              # name a problem, get the right agent (governed)
+                                  #   also: refactor · research · review · test · onboard
 agix swarm --worker <name> --n 3  # fan tasks out to a serving worker over the bus
 agix soul show                    # print your instance soul (it grows with you)
 agix soul note "<learning>"       # append a dated learning to the soul
