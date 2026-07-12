@@ -8,7 +8,10 @@
 // Copyright 2026 Agix AI LLC. Apache-2.0.
 package main
 
-import "os"
+import (
+	"os"
+	"strings"
+)
 
 // appName is how the CLI refers to itself in all help/usage/error text.
 const appName = "agix"
@@ -52,20 +55,55 @@ func paint(code, s string) string {
 
 // ── logo ─────────────────────────────────────────────────────────────────────────────
 
-// logo is the AGIX wordmark with a honeycomb mark. Half-block glyphs keep it compact and
-// monospace-clean; honey-gold when color is on.
-func logo() string {
-	l1 := "  ⬡  ▄▀█ █▀▀ █ ▀▄▀"
-	l2 := "     █▀█ █▄█ █ █ █"
-	if colorOn() {
-		l1 = cHoney + cBold + l1 + cReset
-		l2 = cHoney + cBold + l2 + cReset
+// combRows is the honeycomb-sheet mark (a little beehive comb). Plain ASCII so it tiles
+// crisply in any monospace font; honey-gold when color is on. The AGIX wordmark rides the
+// two middle rows (indices 2 and 3), drawn with half-block glyphs.
+var (
+	combRows = []string{
+		" __    __    __",
+		`/  \__/  \__/  \`,
+		`\__/  \__/  \__/`,
+		`/  \__/  \__/  \`,
+		`\__/  \__/  \__/`,
 	}
-	return l1 + "\n" + l2
+	wordmarkRows = []string{"▄▀█ █▀▀ █ ▀▄▀", "█▀█ █▄█ █ █ █"}
+)
+
+// hy paints s honey-gold + bold iff color is on.
+func hy(s string) string {
+	if colorOn() {
+		return cHoney + cBold + s + cReset
+	}
+	return s
 }
 
-// banner is the logo + tagline + version line, used for `version` and bare/`help` output.
-func banner() string {
-	return logo() + "  " + paint(cDim, tagline) + "\n" +
-		"     " + paint(cComb, appName+" "+version+" · beta") + "\n"
+// renderMark composes the honeycomb + AGIX wordmark. With meta, the tagline and version line
+// ride the wordmark's two rows.
+func renderMark(meta bool) string {
+	var b strings.Builder
+	for i, row := range combRows {
+		b.WriteString(hy(row))
+		switch i {
+		case 2:
+			b.WriteString("   " + hy(wordmarkRows[0]))
+			if meta {
+				b.WriteString("   " + paint(cDim, tagline))
+			}
+		case 3:
+			b.WriteString("   " + hy(wordmarkRows[1]))
+			if meta {
+				b.WriteString("   " + paint(cComb, appName+" "+version+" · beta"))
+			}
+		}
+		if i < len(combRows)-1 {
+			b.WriteString("\n")
+		}
+	}
+	return b.String()
 }
+
+// logo is the honeycomb mark + AGIX wordmark, honey-gold.
+func logo() string { return renderMark(false) }
+
+// banner is the logo + tagline + version line, used for `version` and bare/`help` output.
+func banner() string { return renderMark(true) + "\n" }

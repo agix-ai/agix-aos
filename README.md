@@ -27,8 +27,8 @@ discipline, using the same models your CLI already calls.
 > orchestration discipline**, not smarter answers: it uses the same models your CLI already
 > calls.
 
-**See it move** — the branded CLI, a governed flow that pauses at the actor≠verifier gate, and
-capability routing:
+**See it move** — browse the agent fleet, call an agent on a task, fan one task across a governed
+swarm, and watch it pause at the actor≠verifier gate — all `$0` (mock, deterministic):
 
 ![Agix AOS terminal demo](.github/assets/agix-demo.gif)
 
