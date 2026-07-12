@@ -41,7 +41,7 @@ import (
 	"github.com/agix-ai/agix/core/router"
 )
 
-const version = "0.1.1"
+const version = "0.1.2"
 
 const ledgerPath = ".agix/ledger.jsonl"
 
@@ -49,7 +49,12 @@ func main() {
 	args := os.Args[1:]
 	if len(args) == 0 {
 		// Bare `agix` is the front door the brew caveats promise ("Get started: agix").
-		// Present the banner + help on stdout and exit cleanly — not a stderr error.
+		// On a FRESH machine (no ~/.agix/km.db) it auto-onboards once — a quick,
+		// non-destructive provision + welcome (the README's "just run `agix`, it
+		// auto-onboards"). Once onboarded, it's the plain banner + command overview.
+		if !isOnboarded() {
+			os.Exit(autoOnboard())
+		}
 		fmt.Print(banner())
 		fmt.Fprintln(os.Stdout)
 		usageTo(os.Stdout)
@@ -70,6 +75,8 @@ func main() {
 		}
 	}
 	switch args[0] {
+	case "init":
+		os.Exit(cmdInit(args[1:]))
 	case "version":
 		fmt.Print(banner())
 	case "-v", "--version":
@@ -99,6 +106,8 @@ func main() {
 		os.Exit(cmdSecret(args[1:]))
 	case "verify-guard":
 		os.Exit(cmdVerifyGuard(args[1:]))
+	case "artifacts":
+		os.Exit(cmdArtifacts(args[1:]))
 	case "help", "-h", "--help", "-help":
 		fmt.Print(banner())
 		fmt.Fprintln(os.Stdout)
@@ -109,9 +118,10 @@ func main() {
 		if ag, ok := taskModes[args[0]]; ok {
 			os.Exit(cmdAgentRun(append([]string{ag}, args[1:]...)))
 		}
-		// Terse, not the whole help block — point at `agix help`.
+		// Terse, not the whole help block — point at `agix help`. Exit 1: an unknown
+		// command is a usage error the caller should be able to detect in a script.
 		fmt.Fprintf(os.Stderr, "%s: unknown command %q\nRun '%s help' for usage.\n", appName, args[0], appName)
-		os.Exit(2)
+		os.Exit(1)
 	}
 }
 
@@ -132,6 +142,7 @@ func usageTo(w *os.File) {
 	var b strings.Builder
 	b.WriteString(h("USAGE") + "\n")
 	b.WriteString(row(appName+" <command>", "[flags]"))
+	b.WriteString(row(appName+" init", "first-run onboarding — provision the instance (--defaults)"))
 	b.WriteString(row(appName+" help", "this reference · "+appName+" <command> --help for a verb"))
 	b.WriteString("\n" + h("RUN THE HIVE") + "\n")
 	b.WriteString(row(appName+` run "<task>"`, "one agent path — forage→work→return"))
@@ -153,6 +164,8 @@ func usageTo(w *os.File) {
 	b.WriteString(row(appName+" autonomy <sub>", "status | gate | observe (per-domain rung)"))
 	b.WriteString(row(appName+" secret <sub>", "check <ref> | scan <file>"))
 	b.WriteString(row(appName+" verify-guard", "independent-verifier gate (actor≠verifier)"))
+	b.WriteString("\n" + h("GOVERNANCE RECEIPTS") + "\n")
+	b.WriteString(row(appName+" artifacts", "render the ledger as an actor≠verifier receipt (--html)"))
 	b.WriteString("\n" + h("CAPABILITIES") + "\n")
 	b.WriteString("  default-quality · cheap-classification · long-context\n")
 	b.WriteString("  tool-use-heavy · vision\n\n")
@@ -224,6 +237,15 @@ func cmdRun(args []string) int {
 	leases := coord.NewMemLedger()
 	ag := &agent.Agent{Name: "forager-1", Router: r, Ledger: led, Leases: leases}
 
+	// Run bracket: record the ORIGINAL user prompt exactly. The agent's agent_start
+	// carries Task.Name ("cli-task"), not the prompt, so without this bracket
+	// `agix artifacts` rendered "cli-task" as the task. Only the OUTERMOST process
+	// owns the bracket; a nested engine sub-invocation (AGIX_RUN_ID set) skips it.
+	runID, owner := runBracketOwner()
+	if owner {
+		emitRunStart(led, runID, task, capability, "single", "")
+	}
+
 	runStart := time.Now().UTC()
 	res, runErr := ag.Run(context.Background(), agent.Task{
 		Name:       "cli-task",
@@ -231,6 +253,9 @@ func cmdRun(args []string) int {
 		Capability: router.Capability(capability),
 		Scope:      []string{"hive/cli/" + provider},
 	})
+	if owner {
+		emitRunDone(led, runID, runErr == nil, res.Usage.CostUSD)
+	}
 
 	// Result.
 	if res.Text != "" {
@@ -368,6 +393,15 @@ func cmdFlow(args []string) int {
 		return 1
 	}
 
+	// Run bracket: record the ORIGINAL user task exactly. Flow's total cost is not
+	// surfaced on the demo.Result, so run_done omits cost_usd (it stays exact rather
+	// than guessed); the receipt's cost is still summed from the model_call frames.
+	// Only the OUTERMOST process owns the bracket; a nested sub-invocation skips it.
+	runID, owner := runBracketOwner()
+	if owner {
+		emitRunStart(led, runID, task, "", "flow", "")
+	}
+
 	runStart := time.Now().UTC()
 	res, runErr := demo.Run(context.Background(), demo.Options{
 		Task:     task,
@@ -375,6 +409,9 @@ func cmdFlow(args []string) int {
 		Provider: provider,
 		Ledger:   led,
 	})
+	if owner {
+		emitRunDone(led, runID, runErr == nil, -1)
+	}
 	if runErr != nil {
 		fmt.Fprintf(os.Stderr, "flow: %v\n", runErr)
 		if res.CheckpointID != "" {

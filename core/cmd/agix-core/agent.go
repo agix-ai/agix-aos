@@ -163,25 +163,46 @@ func cmdAgentRun(args []string) int {
 		return 1
 	}
 
+	led, err := ledger.Open(ledgerPath)
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "agent run: open ledger: %v\n", err)
+		return 1
+	}
+
+	// Run bracket — owned by the OUTERMOST process, opened BEFORE any delegation so
+	// it carries the RAW user task exactly. This is the case Stage 1 got wrong: when
+	// the agent has an agent.ts, `agent run` DELEGATES to the Bun runner, which shells
+	// back into `agix-core agent run --engine` for each governed unit. That grandchild
+	// used to emit its own run_start carrying the RENDERED system-prompt/task-template
+	// ("Diagnose this failure signal… SIGNAL: <task>") instead of the user's prompt,
+	// and nested engine calls double-bracketed the run. runBracketOwner mints the id
+	// and publishes AGIX_RUN_ID into the environment; the Bun child (spawned with the
+	// inherited env) and its agix-core grandchild both see themselves as nested and
+	// skip their own brackets. Net: exactly one run_start, task == the raw user task.
+	// The declarative fleet runner still mints its own internal lease-scope id.
+	runID, owner := runBracketOwner()
+	if owner {
+		emitRunStart(led, runID, task, "", "single", "")
+	}
+
 	// Behavior-layer delegation. When the agent has a TypeScript behavior file
 	// and the caller did not force the declarative engine, hand off to the Bun
 	// runner. This is the ONE place Go crosses into Bun; the Bun runner drives
 	// orchestration and calls back with --engine (which lands below, never here),
-	// so the hop is non-recursive by construction.
+	// so the hop is non-recursive by construction. The bracket is already open above,
+	// so the delegated run closes it here and the declarative path below does not
+	// re-open it (same owner, one bracket).
 	if !engineOnly {
 		if tsPath := agentTSPath(dir, name); tsPath != "" {
-			if code, delegated := delegateToBun(dir, name, provider, task, f.repoRoot, jsonOut, publicOnly); delegated {
+			if code, delegated := delegateToBun(dir, name, provider, task, f.repoRoot, jsonOut, publicOnly, f.extra); delegated {
+				if owner {
+					emitRunDone(led, runID, code == 0, -1)
+				}
 				return code
 			}
 			// Bun unavailable → honest degrade to the declarative governed path.
 			fmt.Fprintf(os.Stderr, "agent run: %q has a TypeScript behavior (%s) but Bun is unavailable; running the declarative governed hive (--engine)\n", name, tsPath)
 		}
-	}
-
-	led, err := ledger.Open(ledgerPath)
-	if err != nil {
-		fmt.Fprintf(os.Stderr, "agent run: open ledger: %v\n", err)
-		return 1
 	}
 
 	runner := fleet.New()
@@ -213,6 +234,9 @@ func cmdAgentRun(args []string) int {
 	}
 
 	res, runErr := runner.Run(context.Background(), spec, task)
+	if owner {
+		emitRunDone(led, runID, runErr == nil, res.Result.Cost.USD)
+	}
 	if runErr != nil {
 		if jsonOut {
 			emitRunError(runErr)
@@ -351,7 +375,7 @@ func agentTSPath(dir, name string) string {
 // Bun or the fleet CLI cannot be located, so the caller can degrade to the
 // declarative path. The Bun runner calls back with `agent run <name> --engine`,
 // which lands on the declarative path in-process — the hop never recurses.
-func delegateToBun(dir, name, provider, task, repoRoot string, jsonOut, publicOnly bool) (int, bool) {
+func delegateToBun(dir, name, provider, task, repoRoot string, jsonOut, publicOnly bool, extra []string) (int, bool) {
 	bun, err := exec.LookPath("bun")
 	if err != nil {
 		return 0, false
@@ -370,6 +394,9 @@ func delegateToBun(dir, name, provider, task, repoRoot string, jsonOut, publicOn
 	if publicOnly {
 		argv = append(argv, "--public-only")
 	}
+	// Forward agent-specific flags (--diff, --client, --task, …) so a TS behavior's
+	// required inputs reach it via the Bun runner's ctx.input.flags.
+	argv = append(argv, extra...)
 	if task != "" {
 		argv = append(argv, task)
 	}
@@ -418,6 +445,11 @@ type agentFlags struct {
 	attest     bool   // wire the Comb write side (attest the run's certified artifact)
 	attestDB   string // Comb store path (default ~/.agix/km.db)
 	rest       []string
+	// extra holds agent-specific flags the CLI doesn't recognize (e.g. pr-reviewer
+	// --diff, onboarding --client, swe-solver --task). They are forwarded verbatim to
+	// the Bun runner, which parses arbitrary --flag/--flag=value into ctx.input.flags —
+	// so a TS behavior's required inputs are reachable through `agix agent run`.
+	extra []string
 }
 
 // parseAgentFlags pulls the shared --dir/--provider/--repoRoot/--public-only/--json/
@@ -475,7 +507,15 @@ func parseAgentFlags(args []string) (agentFlags, error) {
 		case arg == "--engine":
 			f.engineOnly, i = true, i+1
 		case strings.HasPrefix(arg, "--"):
-			return agentFlags{}, fmt.Errorf("agent: unknown flag %q", arg)
+			// Unknown flag → pass through to the agent's behavior rather than reject.
+			// Forward verbatim; if it's `--flag value` (no `=`) and the next token isn't
+			// itself a flag, consume that token as its value (matching the Bun parser).
+			f.extra = append(f.extra, arg)
+			i++
+			if !strings.Contains(arg, "=") && i < len(args) && !strings.HasPrefix(args[i], "-") {
+				f.extra = append(f.extra, args[i])
+				i++
+			}
 		default:
 			f.rest = append(f.rest, arg)
 			i++

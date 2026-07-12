@@ -28,6 +28,21 @@ func verbHelp(verb string) (string, bool) {
 }
 
 var verbHelpText = map[string]string{
+	"init": `agix init — first-run onboarding; provision this instance's durable state
+
+Idempotent: it never clobbers existing state (an existing file is kept, not
+overwritten). Provisions under ~/.agix — the knowledge fabric (km.db, seeded so
+it's non-empty), a wiki/, a soul.md (instance identity), and a settings.json —
+and detects your coding-agent CLI (Claude Code, then Codex) as the default
+provider. Runs fully offline; no API key required.
+
+usage:
+  agix init             interactive on a TTY — a short get-to-know-you personalizes soul.md
+  agix init --defaults  non-interactive — provision everything with placeholders, no prompts
+
+On a fresh machine, bare 'agix' auto-onboards once (equivalent to 'agix init
+--defaults') and then prints the welcome banner.
+`,
 	"run": `agix run — one forage→work→return agent path; writes the audit ledger
 
 usage:
@@ -131,6 +146,28 @@ usage:
   --allowlist <p>   curated verifier allow-list JSON (default .github/agix-verifier-allowlist.json);
                     required only for a risk-area PR — a non-risk PR passes without it
   --risk <path>     risk taxonomy override (default: built-in globs)
+`,
+	"artifacts": `agix artifacts — render the append-only ledger as a governance receipt
+
+The reviewable actor→verifier→verdict trail for a run: who did the work, the
+DISTINCT verifier that certified it (actor≠verifier, computed + shown), the
+verdict, cost/token totals, and a compact timeline. Backed by the machine-
+enforced ledger, not a narrative.
+
+usage:
+  agix artifacts                 receipt for the most recent run
+  agix artifacts <run-id>        a specific run (swarm run id, lease id, or scope)
+  agix artifacts --list          recent runs, newest first
+  agix artifacts --json          machine-readable receipt (the Stage-2 HTML seam)
+  agix artifacts <run> --html    self-contained HTML receipt (attach to a PR / open offline)
+
+flags:
+  --list, -l        list recent runs (id, task, time, bees, cost, verdict)
+  --json            emit the receipt struct as JSON (array with --list)
+  --html            render a single run as a self-contained, shareable HTML receipt
+  --out <path>      write the HTML there (implies --html); '-' writes to stdout;
+                    default .agix/receipts/<run-id>.html (dir created)
+  --ledger <path>   read this ledger instead of the default .agix/ledger.jsonl
 `,
 	"swarm": `agix swarm — decompose→worker→converge, KM-augmented (in-process)
 

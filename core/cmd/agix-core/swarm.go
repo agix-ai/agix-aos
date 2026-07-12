@@ -51,6 +51,16 @@ func RunSwarmCLI(args []string) int {
 		return 1
 	}
 
+	// Run bracket: the OUTERMOST process owns exactly one bracket. A directly-invoked
+	// `agix swarm` is outermost and records the ORIGINAL task exactly; a nested engine
+	// sub-invocation (AGIX_RUN_ID already set) inherits the id and skips emitting so
+	// the run is never double-bracketed. The id is threaded into the swarm either way
+	// so the lease scope ("<hive>/swarm/<runID>") and the bracket agree.
+	runID, owner := runBracketOwner()
+	if owner {
+		emitRunStart(led, runID, a.task, "", "swarm", a.hive)
+	}
+
 	opts := swarm.Options{
 		Task:           a.task,
 		Provider:       a.provider,
@@ -58,6 +68,7 @@ func RunSwarmCLI(args []string) int {
 		Concurrency:    a.concurrency,
 		Hive:           a.hive,
 		Ledger:         led,
+		RunID:          runID,
 		QueenModel:     a.queenModel,
 		WorkerModels:   a.workerModels,
 		VerifyModel:    a.verifyModel,
@@ -78,6 +89,9 @@ func RunSwarmCLI(args []string) int {
 	}
 
 	res, runErr := swarm.Run(context.Background(), opts)
+	if owner {
+		emitRunDone(led, runID, runErr == nil, res.Cost.USD)
+	}
 	if runErr != nil {
 		fmt.Fprintf(os.Stderr, "swarm: %v\n", runErr)
 		return 1

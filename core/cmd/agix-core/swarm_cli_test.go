@@ -32,6 +32,10 @@ func captureStdout(t *testing.T, fn func() int) (string, int) {
 // untouched) and asserts the emitted stdout is exactly the frozen agix.swarm.v1
 // contract, at $0, verified, with all five bees.
 func TestRunSwarmCLIFirstLightJSON(t *testing.T) {
+	// Outermost run: no inherited AGIX_RUN_ID, so this process owns the bracket.
+	// t.Setenv also cleans up the os.Setenv runBracketOwner performs, so the id does
+	// not leak into sibling tests in this process.
+	t.Setenv("AGIX_RUN_ID", "")
 	// Run from a temp dir so the .agix/ledger.jsonl lands there, not in the repo.
 	dir := t.TempDir()
 	orig, err := os.Getwd()
