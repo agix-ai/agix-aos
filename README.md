@@ -64,8 +64,8 @@ What the install does and needs:
   on [Bun](https://bun.sh)** (never Node), loaded dynamically from the install tree.
   Homebrew installs Bun (runtime) plus the Go and Rust toolchains (build-time only).
 - Builds a **small Rust component on install** — the `lewis-aos-bus` intra-agent message
-  bus ships as source and compiles at install time (so `agix swarm` and `agix agent serve`
-  work from a clean install, cross-architecture; ~18s, build-time only).
+  bus (the messaging substrate) ships as source and compiles at install time from a clean
+  checkout, cross-architecture (~18s, build-time only).
 - State lives under your home dir (`~/.config/agix`, `~/.cache/agix`,
   `~/.local/state/agix`) — nothing is installed system-wide beyond the formula tree.
 - **No telemetry.** Agix makes no background network calls of its own. The only outbound
@@ -169,23 +169,20 @@ that certifies it** (actor ≠ verifier). See [`AGENTS.md`](AGENTS.md).
 ### Core commands
 
 ```sh
-agix                              # interactive mentor + slash commands (the default entry point)
+agix                              # print the banner + a command overview
 agix agent list                   # list your agents
-agix agent run <name> [flags]     # run an agent locally
+agix agent run <name> [flags]     # run an agent locally (agent-specific flags pass through)
 agix agent new <name>             # scaffold a new agent (interactive wizard on a TTY)
 agix agent edit <name>            # open its manifest in $EDITOR, then re-validate
 agix agent validate <name>        # schema-check an agent against the runner's contract
 agix fleet                        # interactive TUI — browse the fleet
 agix debug "<issue>"              # name a problem, get the right agent (governed)
                                   #   also: refactor · research · review · test · onboard
-agix swarm --worker <name> --n 3  # fan tasks out to a serving worker over the bus
-agix soul show                    # print your instance soul (it grows with you)
-agix soul note "<learning>"       # append a dated learning to the soul
+agix hive "<task>"                # decompose → work → converge across a governed swarm
+agix swarm --task "<task>" --workers 3   # in-process decompose → workers → converge
+agix flow "<task>" --gate=approve # the governance graph; pauses at the actor≠verifier gate
+agix artifacts <run> [--html]     # render a run's governance receipt (terminal or shareable HTML)
 ```
-
-`agix swarm` needs a worker answering on the bus — start one in another shell with
-`agix agent serve <name>` first (otherwise the fanout returns `0/N ok`: the bus routes
-fine, but there's no one home).
 
 ## What's inside
 
