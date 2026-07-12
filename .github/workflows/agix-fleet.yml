@@ -1,0 +1,88 @@
+# Agix fleet — self-maintenance workflow (Stage 1: issue triage only).
+#
+# Stage 1 is the lowest-risk rung: it reacts ONLY to a newly-opened issue and posts a
+# single triage COMMENT. It never touches a PR, never merges, never writes code. The
+# actor≠verifier PR-review showcase (pull_request_target) is Stage 2, added separately.
+#
+# SECRETS (set in repo settings — the workflow only REFERENCES them, never contains them):
+#   AGIX_FLEET_KEY    (required) — an Anthropic API key for the triage agent.
+#                     If unset, the workflow no-ops cleanly (triage disabled), so this file
+#                     is safe to merge before the key exists.
+#   AGIX_FLEET_TOKEN  (optional) — the agix-steward App token, so comments author as the
+#                     fleet identity. If unset, comments post as github-actions[bot].
+name: agix-fleet
+
+on:
+  issues:
+    types: [opened]
+
+permissions:
+  issues: write
+  contents: read
+
+concurrency:
+  group: agix-fleet-issue-${{ github.event.issue.number }}
+  cancel-in-progress: false
+
+jobs:
+  triage:
+    runs-on: ubuntu-latest
+    if: github.event.issue.user.login != 'agix-steward[bot]'
+    steps:
+      - name: Gate on the model key (skip cleanly if unset)
+        id: gate
+        env:
+          KEY: ${{ secrets.AGIX_FLEET_KEY }}
+        run: |
+          if [ -z "$KEY" ]; then
+            echo "AGIX_FLEET_KEY not set — triage disabled (no-op)."
+            echo "go=false" >> "$GITHUB_OUTPUT"
+          else
+            echo "go=true" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Checkout
+        if: steps.gate.outputs.go == 'true'
+        uses: actions/checkout@v4
+
+      - name: Install Bun (fleet runtime)
+        if: steps.gate.outputs.go == 'true'
+        uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: latest
+
+      - name: Build the agix CLI
+        if: steps.gate.outputs.go == 'true'
+        run: |
+          go build -o "$RUNNER_TEMP/agix-core" ./core/cmd/agix-core
+          echo "AGIX_CORE_BIN=$RUNNER_TEMP/agix-core" >> "$GITHUB_ENV"
+          echo "AGIX_FLEET_CLI=$GITHUB_WORKSPACE/fleet/runtime/cli.ts" >> "$GITHUB_ENV"
+
+      - name: Fleet triage (governed)
+        if: steps.gate.outputs.go == 'true'
+        env:
+          # Model key — encrypted repo secret. The triage agent is read/analyze only.
+          ANTHROPIC_API_KEY: ${{ secrets.AGIX_FLEET_KEY }}
+          # Issue text passed as DATA via a file, never interpolated into the shell or the
+          # agent's exec surface (prompt-injection guardrail).
+          ISSUE_TITLE: ${{ github.event.issue.title }}
+          ISSUE_BODY: ${{ github.event.issue.body }}
+        run: |
+          set -euo pipefail
+          printf '%s\n\n%s\n' "$ISSUE_TITLE" "$ISSUE_BODY" > "$RUNNER_TEMP/issue.txt"
+          "$AGIX_CORE_BIN" agent run issue-triage "$(cat "$RUNNER_TEMP/issue.txt")" \
+            --provider anthropic --json > "$RUNNER_TEMP/triage.json" || {
+              echo "triage failed — no comment posted"; exit 0; }
+          jq -r '.comment // .answer // empty' "$RUNNER_TEMP/triage.json" > "$RUNNER_TEMP/comment.md"
+          test -s "$RUNNER_TEMP/comment.md" || { echo "empty triage — skipping"; exit 0; }
+
+      - name: Post the triage comment
+        if: steps.gate.outputs.go == 'true' && hashFiles(format('{0}/comment.md', runner.temp)) != ''
+        env:
+          # Prefer the agix-steward App identity; fall back to the built-in token (posts as
+          # github-actions[bot]) so go-live needs only the one model-key secret.
+          GH_TOKEN: ${{ secrets.AGIX_FLEET_TOKEN || secrets.GITHUB_TOKEN }}
+        run: |
+          gh issue comment "${{ github.event.issue.number }}" \
+            --repo "${{ github.repository }}" \
+            --body-file "$RUNNER_TEMP/comment.md"
