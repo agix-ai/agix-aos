@@ -66,8 +66,11 @@ What the install does and needs:
 - Builds a **small Rust component on install** — the `lewis-aos-bus` intra-agent message
   bus (the messaging substrate) ships as source and compiles at install time from a clean
   checkout, cross-architecture (~18s, build-time only).
-- State lives under your home dir (`~/.config/agix`, `~/.cache/agix`,
-  `~/.local/state/agix`) — nothing is installed system-wide beyond the formula tree.
+- State lives under your home dir: the durable instance — the knowledge fabric
+  (`~/.agix/km.db`), `soul.md`, `settings.json`, and `wiki/` — under `~/.agix`, and any
+  provider key files under `~/.config/agix/<provider>.env`. Each run also writes its
+  audit ledger to a `./.agix/` in the working directory (gitignored). Nothing is
+  installed system-wide beyond the formula tree.
 - **No telemetry.** Agix makes no background network calls of its own. The only outbound
   calls are the model calls you trigger, through your CLI agent or a key you set. See
   [Security & official sources](#security--official-sources).
@@ -80,25 +83,29 @@ Just run `agix`. On a fresh machine it **auto-onboards** — zero config:
 agix
 ```
 
-First run provisions everything for you:
+First run provisions everything for you, under `~/.agix`:
 
-- a local **knowledge fabric** (seeded, so it's non-empty out of the box),
-- a `wiki/` for your durable notes,
-- a starting **`soul.md`** (your instance identity, which grows as Agix learns about you),
-- a `settings.json`,
-- and it **picks your installed CLI agent as the provider** (Claude Code or Codex) — no
-  API key required.
+- a local **knowledge fabric** — the Comb, at `~/.agix/km.db` (seeded with a few honest
+  starter leaves, so it's non-empty out of the box),
+- a `wiki/` for durable notes,
+- a starting **`soul.md`** — your instance identity (a durable, human-editable
+  notes-to-self today; the runtime does not load it automatically yet),
+- a `settings.json` recording the detected default provider,
+- and it **detects your installed CLI agent** (Claude Code, then Codex) and records it as
+  the default provider — no API key required.
 
 A short, optional get-to-know-you (name, role, what you're building) personalizes the
 soul. You can run setup explicitly any time:
 
 ```sh
-agix init               # full interactive onboarding
+agix init               # full interactive onboarding (personalizes soul.md on a TTY)
 agix init --defaults    # non-interactive: provision everything with placeholders
 ```
 
-If neither Claude Code nor Codex is installed, onboarding still completes — it just asks
-you to install a CLI agent (or set an API key) before agents make a model call.
+`init` is idempotent — a re-run keeps your existing state and never overwrites an edited
+`soul.md`. If neither Claude Code nor Codex is installed, onboarding still completes and
+defaults the provider to `mock` (a `$0` dry run) — it just asks you to install a CLI
+agent (or set an API key) before agents make a real model call.
 
 ## Connect your model
 
@@ -216,8 +223,9 @@ capability *is* the boundary.
 > executor-trust agents or anything you didn't author.
 >
 > **Your data stays local.** No telemetry, no covert network calls, nothing phones home.
-> State lives under `~/.config/agix`, `~/.cache/agix`, and `~/.local/state/agix`. The only
-> outbound calls are the model calls you trigger.
+> State lives under `~/.agix` (the knowledge fabric, `soul.md`, `settings.json`, `wiki/`)
+> and `~/.config/agix` (provider key files); each run's audit ledger is a `./.agix/` in
+> its working directory. The only outbound calls are the model calls you trigger.
 
 Full detail, the trust-model roadmap, and how to report a vulnerability are in
 [`SECURITY.md`](SECURITY.md).
@@ -234,15 +242,14 @@ Full detail, the trust-model roadmap, and how to report a vulnerability are in
 
 ```sh
 brew uninstall agix-aos        # remove the agix CLI + formula tree
-agix uninstall --purge-state   # OR, before uninstalling the binary: purge per-user state
 ```
 
-`agix uninstall` (no flag) previews exactly which state dirs it would remove; add
-`--purge-state` (or `--yes`) to delete them. If you've already run `brew uninstall`, remove
-them by hand:
+That removes the binary and formula tree. Agix keeps your instance state (the knowledge
+fabric, `wiki/`, `soul.md`, and `settings.json`) under your home dir; to purge that too,
+remove it by hand:
 
 ```sh
-rm -rf ~/.config/agix ~/.cache/agix* ~/.local/state/agix
+rm -rf ~/.agix ~/.config/agix
 ```
 
 ## Contributing

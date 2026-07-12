@@ -8,6 +8,31 @@ All notable changes to Agix AOS are documented here. This project adheres to
 > **retired Node runtime** and are kept for history; they are not a newer version of the
 > current codebase. Public releases start fresh at `0.1.0` in the `agix-ai/agix-aos` repo.
 
+## [0.1.2] — 2026-07-12 — first-run onboarding + governance receipts
+
+The new-user release: install, run `agix`, and it sets you up — plus a way to see the
+governance trail of any run.
+
+### Added
+- **First-run onboarding.** `agix init` (and `agix init --defaults` for non-interactive)
+  provisions your instance under `~/.agix` — a seeded knowledge fabric, a `wiki/`, a
+  `soul.md`, and a `settings.json` — and detects your installed Claude Code / Codex CLI as
+  the provider (no API key needed). Bare `agix` on a fresh machine auto-onboards once.
+- **`agix artifacts`.** Render any run's **governance receipt** — the actor≠verifier trail,
+  the verdict, cost, and a timeline — to the terminal, `--json`, or a self-contained,
+  shareable `--html` page.
+
+### Changed
+- New honeycomb logo and a usage-driven demo (browse the fleet → run an agent → fan a task
+  across a governed swarm → the actor≠verifier gate).
+
+### Fixed
+- `agix agent run` now **forwards agent-specific flags** (e.g. `--diff`, `--client`, `--task`)
+  to the agent instead of rejecting them, so input-specific agents are runnable from the CLI.
+- README accuracy: the core-commands, first-run, and uninstall sections now match what ships
+  (removed documented-but-nonexistent commands; added `agix artifacts`).
+- Unknown commands now exit non-zero.
+
 ## [0.1.1] — 2026-07-10 — branded CLI + provider-neutral release
 
 An out-of-band patch: v0.1.0 shipped with pre-rebrand `agix-core` naming and internal

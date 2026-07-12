@@ -1,0 +1,15 @@
+#!/usr/bin/env bash
+# browser-driver — launcher shim for the reference CDP driver (driver.ts).
+# Resolves the driver relative to itself so it works from the repo AND from an
+# installed release tree, then execs it under Bun (Bun built-ins only, no npm).
+set -euo pipefail
+HERE="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+
+if ! command -v bun >/dev/null 2>&1; then
+  echo "browser-driver: Bun is required to run this driver." >&2
+  echo "  Install it once:  curl -fsSL https://bun.sh/install | bash" >&2
+  echo "  (docs: https://bun.sh)" >&2
+  exit 4
+fi
+
+exec bun "$HERE/driver.ts" "$@"

@@ -38,6 +38,16 @@ func RunHiveCLI(args []string) int {
 		return 1
 	}
 
+	// Run bracket: the OUTERMOST process owns exactly one bracket. A directly-invoked
+	// `agix hive` is outermost and brackets with its ORIGINAL task; a nested engine
+	// sub-invocation (AGIX_RUN_ID already set) inherits the id and skips emitting so
+	// the run is never double-bracketed. The id is threaded into the hive either way
+	// so the lease scope and the bracket agree.
+	runID, owner := runBracketOwner()
+	if owner {
+		emitRunStart(led, runID, a.task, "", "swarm", a.hive)
+	}
+
 	// Assemble the hive through the ADK builder (per-role tiering, distinct
 	// verifier, $0/offline default) rather than hand-filling swarm.Options.
 	hive := hivekit.New().
@@ -46,9 +56,13 @@ func RunHiveCLI(args []string) int {
 		Workers(a.workers, a.workerModels...).
 		Queen(a.queenModel).
 		Verifier(a.verifyModel).
+		RunID(runID).
 		Ledger(led)
 
 	res, runErr := hive.Run(context.Background(), a.task)
+	if owner {
+		emitRunDone(led, runID, runErr == nil, res.Cost.USD)
+	}
 	if runErr != nil {
 		fmt.Fprintf(os.Stderr, "hive: %v\n", runErr)
 		return 1

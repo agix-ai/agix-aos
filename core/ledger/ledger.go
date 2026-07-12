@@ -43,6 +43,16 @@ const (
 	KindNodeDone  = "node_done"
 	KindGatePause = "gate_pause"
 	KindRatify    = "ratify"
+
+	// Run bracket. The CLI run entry points wrap a whole invocation between a
+	// run_start and a run_done, so a reader can recover the run's boundary, id,
+	// and the ORIGINAL user task EXACTLY — rather than reconstructing them
+	// heuristically from decompose boundaries and gate payloads. Additive: every
+	// existing reader filters by kind, so these two kinds pass through untouched.
+	//   run_start Data: {run_id, task, capability, kind ("swarm"|"single"|"flow"), hive?}
+	//   run_done  Data: {run_id, ok, cost_usd?}
+	KindRunStart = "run_start"
+	KindRunDone  = "run_done"
 )
 
 // Entry is one append-only audit record.
