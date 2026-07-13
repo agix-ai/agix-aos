@@ -1,8 +1,12 @@
+<p align="center">
+  <img src="https://github.com/user-attachments/assets/a83b50c5-51ca-405b-aa15-07c3b258a279" alt="Agix AOS — an operating system for a team of AI agents you own" width="100%">
+</p>
+
 # Agix AOS
 
 An operating system for a team of AI agents you own. Scale your AI organically.
 
-> ⚠️ **Agix AOS v0.1.1 is in beta.** It's early and actively evolving — expect rough edges
+> ⚠️ **Agix AOS v0.1.2 is in beta.** It's early and actively evolving — expect rough edges
 > and breaking changes between releases. [Issues and feedback](../../issues) are very welcome.
 
 [![Website](https://img.shields.io/badge/website-agix--ai.io-1f2937)](https://agix-ai.io)
