@@ -71,10 +71,21 @@ flags:
   --worker-models <ids>  comma-separated per-worker model ids
   --verifier <id>        verifier model id
 `,
-	"route": `agix route — show which provider/model a capability resolves to
+	"route": `agix route — show + edit the per-capability routing overlay
+
+The router resolves a capability to a provider/model by PRECEDENCE:
+  overlay > --provider force > default table.
+The overlay (~/.agix/routing.json) is a surgical, per-capability override that
+OUTRANKS a whole-run --provider force — so a graduated capability keeps its
+provider even when the run is pinned elsewhere (e.g. cheap-classification→local
+under --provider anthropic).
 
 usage:
-  agix route <capability>
+  agix route                         list the full effective table
+  agix route list                    (same)
+  agix route <capability>            show the provider/model one capability resolves to
+  agix route set <capability> <p>    persist an override (p: mock|anthropic|openai|gemini|local)
+  agix route unset <capability>      remove an override
 
 capabilities:
   default-quality · cheap-classification · long-context · tool-use-heavy · vision

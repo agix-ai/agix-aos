@@ -19,13 +19,18 @@ package demo
 import (
 	"context"
 	"fmt"
+	"os"
 	"strings"
 
 	"github.com/agix-ai/agix/core/coord"
 	"github.com/agix-ai/agix/core/ledger"
 	"github.com/agix-ai/agix/core/orchestrator"
 	"github.com/agix-ai/agix/core/orchestrator/mem"
+	"github.com/agix-ai/agix/core/provider/anthropic"
+	"github.com/agix-ai/agix/core/provider/gemini"
+	"github.com/agix-ai/agix/core/provider/local"
 	"github.com/agix-ai/agix/core/provider/mock"
+	"github.com/agix-ai/agix/core/provider/openai"
 	"github.com/agix-ai/agix/core/router"
 )
 
@@ -130,6 +135,12 @@ func Run(ctx context.Context, opts Options) (Result, error) {
 	r := router.NewRouter()
 	r.Register(mock.New())
 	r.ForceProvider("mock")
+	// Per-capability routing overlay (~/.agix/routing.json) wins over the forced
+	// mock provider: a graduated capability keeps its provider even in the flow
+	// demo. Applied AFTER ForceProvider so overlay precedence holds; overlay-target
+	// providers are registered so the resolved call can dispatch. A missing/empty
+	// file is a no-op — the demo stays deterministic and $0 on mock by default.
+	applyDemoOverlay(r)
 
 	led := opts.Ledger
 	leases := coord.NewMemLedger()
@@ -241,4 +252,35 @@ func slug(s string) string {
 		return "task"
 	}
 	return out
+}
+
+// applyDemoOverlay loads the persisted per-capability routing overlay and applies
+// it to the demo's router AFTER ForceProvider (so overlay precedence holds),
+// registering each overlay-target provider so a graduated capability can dispatch.
+// A missing/empty file is a no-op; a malformed one is logged and skipped rather
+// than aborting the governance proof.
+func applyDemoOverlay(r *router.Router) {
+	overlay, err := router.LoadOverlay(router.DefaultOverlayPath())
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "demo: routing overlay: %v (continuing without it)\n", err)
+		return
+	}
+	for c, prov := range overlay {
+		if err := r.SetCapabilityProvider(c, prov); err != nil {
+			fmt.Fprintf(os.Stderr, "demo: routing overlay: %v (skipping)\n", err)
+			continue
+		}
+		switch prov {
+		case "mock":
+			r.Register(mock.New())
+		case "anthropic":
+			r.Register(anthropic.New())
+		case "openai":
+			r.Register(openai.New())
+		case "gemini":
+			r.Register(gemini.New())
+		case "local":
+			r.Register(local.New())
+		}
+	}
 }

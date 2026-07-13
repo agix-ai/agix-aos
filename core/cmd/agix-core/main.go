@@ -33,15 +33,10 @@ import (
 	"github.com/agix-ai/agix/core/coord"
 	"github.com/agix-ai/agix/core/ledger"
 	"github.com/agix-ai/agix/core/orchestrator/demo"
-	"github.com/agix-ai/agix/core/provider/anthropic"
-	"github.com/agix-ai/agix/core/provider/gemini"
-	"github.com/agix-ai/agix/core/provider/local"
-	"github.com/agix-ai/agix/core/provider/mock"
-	"github.com/agix-ai/agix/core/provider/openai"
 	"github.com/agix-ai/agix/core/router"
 )
 
-const version = "0.1.2"
+const version = "0.1.3"
 
 const ledgerPath = ".agix/ledger.jsonl"
 
@@ -121,7 +116,7 @@ func main() {
 		// Terse, not the whole help block — point at `agix help`. Exit 1: an unknown
 		// command is a usage error the caller should be able to detect in a script.
 		fmt.Fprintf(os.Stderr, "%s: unknown command %q\nRun '%s help' for usage.\n", appName, args[0], appName)
-		os.Exit(1)
+		os.Exit(2)
 	}
 }
 
@@ -149,7 +144,7 @@ func usageTo(w *os.File) {
 	b.WriteString(row(appName+` flow "<task>"`, "governed; pauses at the actor≠verifier gate"))
 	b.WriteString(row(appName+` swarm "<task>"`, "parallel fan-out — decompose→workers→converge"))
 	b.WriteString(row(appName+` hive "<task>"`, "governed worker swarm (queen + verifier)"))
-	b.WriteString(row(appName+" route <cap>", "show the provider/model a capability resolves to"))
+	b.WriteString(row(appName+" route [set|unset]", "show/edit per-capability routing (overlay > --provider)"))
 	b.WriteString("\n" + h("SOLVE A PROBLEM") + paint(cDim, "  (names a problem → the right agent, governed)") + "\n")
 	b.WriteString(row(appName+` debug "<issue>"`, "root-cause a failure (investigator)"))
 	b.WriteString(row(appName+` refactor "<x>"`, "restructure code, governed (refactor-lead)"))
@@ -181,22 +176,6 @@ func spaces(n int) string {
 	return strings.Repeat(" ", n)
 }
 
-func cmdRoute(args []string) int {
-	if len(args) < 1 {
-		fmt.Fprintln(os.Stderr, "route: need a capability")
-		return 2
-	}
-	r := router.NewRouter()
-	route, err := r.Resolve(router.Capability(args[0]))
-	if err != nil {
-		fmt.Fprintln(os.Stderr, err)
-		return 1
-	}
-	// match the house `label:  value` style used by run/flow/km/secret.
-	fmt.Printf("route:  %s → %s/%s\n", route.Capability, route.Provider, route.Model)
-	return 0
-}
-
 func cmdRun(args []string) int {
 	task, provider, capability, reportHome, err := parseRunArgs(args)
 	if err != nil {
@@ -209,24 +188,23 @@ func cmdRun(args []string) int {
 	}
 
 	r := router.NewRouter()
-	switch provider {
-	case "mock":
-		r.Register(mock.New())
-		r.ForceProvider("mock") // mock is synthetic; the table never routes to it
-	case "anthropic":
-		r.Register(anthropic.New())
-	case "openai":
-		r.Register(openai.New())
-	case "gemini":
-		r.Register(gemini.New())
-	case "local":
-		// Local Ollama lane ($0). Like mock, the default table never routes to
-		// "local", so pin every call to it.
-		r.Register(local.New())
-		r.ForceProvider("local")
-	default:
-		fmt.Fprintf(os.Stderr, "run: unknown provider %q (mock|anthropic|openai|gemini|local)\n", provider)
+	if err := registerProviderByName(r, provider); err != nil {
+		fmt.Fprintf(os.Stderr, "run: %v\n", err)
 		return 2
+	}
+	switch provider {
+	case "mock", "local":
+		// mock and local are synthetic/local lanes the default table never routes
+		// to, so pin every call to the chosen one.
+		r.ForceProvider(provider)
+	}
+	// Per-capability routing overlay (~/.agix/routing.json) wins over the forced
+	// provider: a graduated capability (e.g. cheap-classification→local) keeps its
+	// provider even under --provider mock. Applied AFTER ForceProvider so overlay
+	// precedence holds; it also registers any overlay-target providers so the
+	// resolved call can dispatch. A missing file is a no-op (default unchanged).
+	if err := applyOverlayToRun(r); err != nil {
+		fmt.Fprintf(os.Stderr, "run: routing overlay: %v (continuing without it)\n", err)
 	}
 
 	led, err := ledger.Open(ledgerPath)

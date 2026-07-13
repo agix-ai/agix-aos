@@ -8,6 +8,19 @@ All notable changes to Agix AOS are documented here. This project adheres to
 > **retired Node runtime** and are kept for history; they are not a newer version of the
 > current codebase. Public releases start fresh at `0.1.0` in the `agix-ai/agix-aos` repo.
 
+## [0.1.3] — 2026-07-13 — per-capability routing + CLI polish
+
+### Added
+- **Per-capability routing.** `agix route set <capability> <provider>` (plus `unset` and `list`)
+  persists a `~/.agix/routing.json` overlay so a single capability — say `cheap-classification` —
+  can route to a **local** provider while the rest of a run stays on its default (or forced)
+  provider. Precedence is overlay > forced > default table, so a graduated capability keeps its
+  route even under `--provider X`. This is the basis for moving repetitive work onto a local model.
+
+### Fixed
+- **Unknown commands now exit `2`** (the usage-error convention), so a script can tell a bad
+  invocation from a runtime error.
+
 ## [0.1.2] — 2026-07-12 — first-run onboarding + governance receipts
 
 The new-user release: install, run `agix`, and it sets you up — plus a way to see the

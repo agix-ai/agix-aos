@@ -111,7 +111,13 @@ for d in "${DEVICES[@]}"; do
     [ -z "$slug" ] && slug="${dn}_root"
     "$B" goto "$BASE$r" >/dev/null 2>&1
     "$B" wait --networkidle >/dev/null 2>&1 || sleep 2
+    # networkidle means the network is quiet; it does not mean the UI has finished
+    # painting. Screenshotting into a running fade-in captures a half-drawn page and
+    # the vision judge then reports failures that do not exist. Freeze animation and
+    # fire any scroll-reveal observers before we look at it.
+    "$B" eval "$HERE/settle.js" >/dev/null 2>&1
     "$B" eval "$HERE/probe.js" >"$RUN/$slug.metrics.json" 2>/dev/null
+    "$B" eval "$HERE/probe-contrast.js" >"$RUN/$slug.contrast.json" 2>/dev/null
     "$B" console --errors >"$RUN/$slug.console.txt" 2>/dev/null
     "$B" screenshot "$RUN/$slug.png" >/dev/null 2>&1
     echo "  captured $slug  ($dvp $dplat)"
