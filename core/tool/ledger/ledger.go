@@ -4,7 +4,7 @@
 // model_call/tool_call/ratify frames) with no in-fleet reader, so an agent that wanted
 // to ground a claim in what REALLY happened ("what shipped this week?", "who ratified
 // last?") had a declared `ledger`/`audit` capability with nothing behind it (the exact
-// gap the naturalist flagged as NOT PORTED). This closes it: a governed, $0/offline,
+// gap an agent flagged as NOT PORTED). This closes it: a governed, $0/offline,
 // deterministic query over the same JSONL, bounded so a result fits a model turn.
 //
 // It is READ-ONLY by construction — the tool holds a *ledger.Ledger and only ever calls
@@ -71,7 +71,7 @@ type ledgerTool struct{ l *ledgercore.Ledger }
 func (t *ledgerTool) Name() string { return "ledger" }
 func (t *ledgerTool) Description() string {
 	return "Query the append-only audit ledger (read-only, deterministic, $0/offline). " +
-		"Args: {\"kind\":\"tool_call\",\"actor\":\"naturalist\",\"since\":\"168h\",\"limit\":50,\"count_only\":false}. " +
+		"Args: {\"kind\":\"tool_call\",\"actor\":\"research\",\"since\":\"168h\",\"limit\":50,\"count_only\":false}. " +
 		"All fields optional: `kind` filters by entry kind (agent_start|model_call|tool_call|lease_claim|" +
 		"lease_release|agent_done|node_start|node_done|gate_pause|ratify|…), `actor` (alias `agent`) filters by " +
 		"the acting agent, `since` is an RFC3339 timestamp or a relative window like \"168h\"/\"7d\", `limit` " +

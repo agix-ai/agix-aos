@@ -341,7 +341,7 @@ func (r *Runner) resolveTools(spec *agentspec.Spec) (resolved []tool.Tool, resol
 		}
 		// The read-only audit built-in: a declared ledger/audit capability becomes the
 		// read-only ledger tool over the run's audit sink — the born-clean analog of the
-		// legacy getLedger().read() seam (the naturalist's "recent development" grounding).
+		// legacy getLedger().read() seam (an agent's "recent development" grounding).
 		// Deny-by-default: only when an audit sink is wired (r.Ledger != nil) does it
 		// resolve; with no ledger the capability degrades to unresolved (reported, not
 		// fatal). Resolved after email so a deployment can still override "ledger".

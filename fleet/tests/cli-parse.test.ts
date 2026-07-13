@@ -19,7 +19,7 @@ describe("parseArgv", () => {
   });
 
   test("the `=` form still works and is unchanged", () => {
-    const p = parseArgv(["run", "head-of-the-lab", "--results=bench/go.json"]);
+    const p = parseArgv(["run", "investigator", "--results=bench/go.json"]);
     expect(p.flags.results).toBe("bench/go.json");
   });
 
