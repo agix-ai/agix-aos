@@ -33,7 +33,7 @@ export interface Parsed {
 // wrong-verdict bug: the old code only let `--dir`/`--provider` take a
 // space-separated value, so `--input session.txt` set `input=true` and leaked
 // `session.txt` into the positionals. A context-warden then audited the literal
-// string "session.txt" and reported HEALTHY on a degraded session; head-of-the-lab
+// string "session.txt" and reported HEALTHY on a degraded session; release-engineer
 // read `--results file` as no results and shipped a HOLD instead of a GO. The
 // `--flag=value` form always worked and is unchanged; a genuinely-boolean flag
 // missing from this set only misbehaves if followed by a bare positional (rare,

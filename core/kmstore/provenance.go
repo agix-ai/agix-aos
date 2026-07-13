@@ -79,9 +79,9 @@ type RetrieveOpts struct {
 	// ≤0.02 at 95% retention) and no floor will filter it. Use it to stop a worker's
 	// Augment() prepending off-topic "Context:", not to make retrieval precise.
 	//
-	// Calibrate with research/agix_lab/retrieve_floor.py against YOUR embedder and
-	// YOUR corpus before setting it. See
-	// research/results/2026-07-09-retrieve-floor.json.
+	// Calibrate against YOUR embedder and YOUR corpus before setting it: measure the
+	// score distribution of on- vs off-topic retrievals and pick a floor just below
+	// the on-topic mass, so relevant leaves survive and off-topic ones drop.
 	MinScore float64
 }
 
