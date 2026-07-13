@@ -1,3 +1,5 @@
+<img width="1997" height="814" alt="D2883B16-2583-437C-8202-48D904906895_1_201_a" src="https://github.com/user-attachments/assets/8d9be65b-28c8-4064-a326-b0352aedd5e3" />
+
 # Agix AOS
 
 An operating system for a team of AI agents you own. Scale your AI organically.
