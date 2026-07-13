@@ -217,10 +217,10 @@ func TestCmdInitRejectsUnknownFlag(t *testing.T) {
 	}
 }
 
-// TestUnknownCommandExitsOne — the money regression for the small fix: an unknown
-// top-level command must exit 1 (was 0/2), so a script can detect it. We exercise the
-// real binary since the dispatch os.Exit()s.
-func TestUnknownCommandExitsOne(t *testing.T) {
+// TestUnknownCommandExitsTwo — an unknown top-level command is a usage error and must
+// exit 2 (the getopt/argparse convention; the aos-testbench cli-exit-contract pins this).
+// We exercise the real binary since the dispatch os.Exit()s.
+func TestUnknownCommandExitsTwo(t *testing.T) {
 	bin := buildTestBinary(t)
 	cmd := exec.Command(bin, "definitely-not-a-command")
 	cmd.Env = append(os.Environ(), "HOME="+t.TempDir(), "NO_COLOR=1")
@@ -229,8 +229,8 @@ func TestUnknownCommandExitsOne(t *testing.T) {
 	if !errors.As(err, &ee) {
 		t.Fatalf("expected a non-zero exit, got err=%v", err)
 	}
-	if ee.ExitCode() != 1 {
-		t.Errorf("unknown command exit = %d, want 1", ee.ExitCode())
+	if ee.ExitCode() != 2 {
+		t.Errorf("unknown command exit = %d, want 2 (usage error)", ee.ExitCode())
 	}
 }
 

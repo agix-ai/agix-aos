@@ -33,6 +33,7 @@ package swarm
 import (
 	"context"
 	"fmt"
+	"os"
 	"strings"
 	"time"
 
@@ -189,6 +190,13 @@ func Run(ctx context.Context, o Options) (Result, error) {
 		return Result{Task: o.Task}, fmt.Errorf("swarm: unknown provider %q (mock|anthropic|openai|gemini|local)", o.Provider)
 	}
 
+	// Per-capability routing overlay (~/.agix/routing.json) wins over the forced
+	// provider: a graduated capability (e.g. cheap-classification→local) keeps its
+	// provider even when the run is pinned elsewhere. Applied AFTER ForceProvider
+	// so overlay precedence holds; overlay-target providers are registered so the
+	// resolved call can dispatch. A missing/empty file is a no-op.
+	applySwarmOverlay(r)
+
 	result := Result{Task: o.Task}
 
 	// ── Queen decompose ────────────────────────────────────────────────────
@@ -292,4 +300,41 @@ func logModelCall(led *ledger.Ledger, b BeeCost) {
 		"cached_tokens": b.Usage.CachedTokens,
 		"cost_usd":      b.Usage.CostUSD,
 	}})
+}
+
+// applySwarmOverlay loads the persisted per-capability routing overlay and applies
+// it to the swarm's router AFTER any ForceProvider (so overlay precedence holds),
+// registering each overlay-target provider so a graduated capability can dispatch.
+// A missing/empty file is a no-op; a malformed one is logged and skipped rather
+// than aborting the run (graceful-degrade / "heals" posture).
+func applySwarmOverlay(r *router.Router) {
+	overlay, err := router.LoadOverlay(router.DefaultOverlayPath())
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "swarm: routing overlay: %v (continuing without it)\n", err)
+		return
+	}
+	for c, prov := range overlay {
+		if err := r.SetCapabilityProvider(c, prov); err != nil {
+			fmt.Fprintf(os.Stderr, "swarm: routing overlay: %v (skipping)\n", err)
+			continue
+		}
+		registerSwarmProvider(r, prov)
+	}
+}
+
+// registerSwarmProvider registers the adapter for one provider name (the overlay
+// target). Names are pre-validated by LoadOverlay, so an unknown name is a no-op.
+func registerSwarmProvider(r *router.Router, name string) {
+	switch name {
+	case "mock":
+		r.Register(mock.New())
+	case "anthropic":
+		r.Register(anthropic.New())
+	case "openai":
+		r.Register(openai.New())
+	case "gemini":
+		r.Register(gemini.New())
+	case "local":
+		r.Register(local.New())
+	}
 }

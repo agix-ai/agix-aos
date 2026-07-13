@@ -182,6 +182,12 @@ type Router struct {
 	// forced is the provider every call is pinned to once ForceProvider is
 	// called (the CLI's `--provider X` lane). Empty means "route normally".
 	forced string
+	// overlay is the persisted per-capability routing override (capability →
+	// provider). It OUTRANKS forced and the default table: a graduated capability
+	// keeps its provider even when the whole run is pinned elsewhere. Nil/empty
+	// means "no override" — default behavior is byte-for-byte unchanged. See
+	// overlay.go for the loader/saver and SetCapabilityProvider.
+	overlay map[Capability]string
 }
 
 // NewRouter builds a Router with the default routing table.
@@ -211,13 +217,26 @@ func (r *Router) ForceProvider(name string) {
 	}
 }
 
-// Resolve maps a Capability to its Route.
+// Resolve maps a Capability to its Route, applying the precedence
+// overlay > forced > default table. When the overlay reroutes a capability to a
+// different provider, it CLEARS the table's model: the table's model id belongs to
+// the default provider (e.g. cheap-classification → anthropic/claude-haiku-4-5), so
+// handing it to a graduated provider (openai, gemini, …) would dispatch a foreign
+// model id. Every provider defaults an empty model to its own canonical one
+// (anthropic→claude-sonnet-5, openai→gpt-4.1, gemini→gemini-2.5-flash, local→
+// AGIX_LOCAL_MODEL), so clearing it lets the overlaid provider pick correctly.
 func (r *Router) Resolve(c Capability) (Route, error) {
 	route, ok := r.table[c]
 	if !ok {
 		return Route{}, fmt.Errorf("unknown capability %q; known: %s", c, r.knownCaps())
 	}
 	route.Capability = c
+	// Overlay wins over forced (which is already baked into route.Provider by
+	// ForceProvider) and over the default table — the whole point of graduation.
+	if prov, ok := r.overlay[c]; ok && prov != route.Provider {
+		route.Provider = prov
+		route.Model = "" // let the graduated provider resolve its own default model
+	}
 	return route, nil
 }
 
